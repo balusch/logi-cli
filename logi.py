@@ -1,612 +1,185 @@
 #!/usr/bin/env python3
 """
-logi - CLI tool for Logitech Options+ device management
+logi - CLI tool for Logitech Options+ device management on macOS.
 
-Communicates with the logioptionsplus_agent via Unix socket
-to query and configure Logitech devices (MX Master 3S, etc.)
+Communicates with the logioptionsplus_agent daemon via Unix socket.
+No GUI needed.
 """
 
 import argparse
 import datetime
-import glob
 import json
+import shutil
 import signal
-import socket
-import struct
+import subprocess
 import sys
-import time
+
+from agent import LogiAgent
+from mappings import (
+    ACTION_ALIASES, BUTTON_NAMES, BUTTON_SLOTS,
+    get_action_name, get_button_name, parse_keystroke,
+)
 
 
-class LogiAgent:
-    """Client for the logioptionsplus_agent Unix socket protocol."""
-
-    SUBSCRIBE_PATHS = [
-        "/devices/state/changed",
-        "/battery/state/changed",
-        "/devices/options/device_arrival",
-        "/devices/options/device_removal",
-    ]
-
-    def __init__(self):
-        self.sock = None
-        self.msg_id = 0
-        self._connect()
-
-    def _connect(self):
-        """Connect to agent socket and perform handshake."""
-        socks = glob.glob("/tmp/logitech_kiros_agent-*")
-        if not socks:
-            print("Error: logioptionsplus_agent is not running.", file=sys.stderr)
-            sys.exit(1)
-
-        if self.sock:
-            try:
-                self.sock.close()
-            except OSError:
-                pass
-
-        self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-        self.sock.connect(socks[0])
-        self.sock.settimeout(5)
-
-        # Read and discard server handshake
-        header = self._recv_exact(4)
-        total = struct.unpack("<I", header)[0]
-        self._recv_exact(total)
-
-        # Subscribe to required channels for device access
-        for p in self.SUBSCRIBE_PATHS:
-            self._send("SUBSCRIBE", p)
-        time.sleep(0.3)
-        # Drain subscribe acks
-        self.sock.settimeout(0.5)
-        try:
-            while True:
-                self.sock.recv(65536)
-        except socket.timeout:
-            pass
-
-    def _recv_exact(self, n):
-        data = b""
-        while len(data) < n:
-            chunk = self.sock.recv(n - len(data))
-            if not chunk:
-                raise ConnectionError("Connection closed")
-            data += chunk
-        return data
-
-    def _send(self, verb, path, payload=None):
-        self.msg_id += 1
-        msg = {"msg_id": str(self.msg_id), "verb": verb, "path": path}
-        if payload:
-            msg["payload"] = payload
-        data = json.dumps(msg).encode()
-        packet = struct.pack(">I", 4) + b"json" + struct.pack(">I", len(data)) + data
-        self.sock.send(struct.pack("<I", len(packet)) + packet)
-
-    def call(self, verb, path, payload=None, _retried=False):
-        try:
-            self._send(verb, path, payload)
-            self.sock.settimeout(5)
-            header = self._recv_exact(4)
-            total = struct.unpack("<I", header)[0]
-            rdata = self._recv_exact(total)
-            fpos = 0
-            while fpos + 4 <= len(rdata):
-                flen = struct.unpack(">I", rdata[fpos : fpos + 4])[0]
-                fpos += 4
-                frame = rdata[fpos : fpos + flen]
-                fpos += flen
-                if frame != b"json":
-                    return json.loads(frame)
-        except socket.timeout:
-            return None
-        except (ConnectionError, BrokenPipeError, OSError):
-            if not _retried:
-                self._connect()
-                return self.call(verb, path, payload, _retried=True)
-            return None
-
-    def recv_message(self, timeout=None):
-        """Read one message from the socket. Returns parsed JSON or None on timeout."""
-        if timeout is not None:
-            self.sock.settimeout(timeout)
-        try:
-            header = self._recv_exact(4)
-            total = struct.unpack("<I", header)[0]
-            rdata = self._recv_exact(total)
-            fpos = 0
-            while fpos + 4 <= len(rdata):
-                flen = struct.unpack(">I", rdata[fpos : fpos + 4])[0]
-                fpos += 4
-                frame = rdata[fpos : fpos + flen]
-                fpos += flen
-                if frame != b"json":
-                    return json.loads(frame)
-        except socket.timeout:
-            return None
-
-    def close(self):
-        self.sock.close()
-
-    def get_devices(self):
-        r = self.call("GET", "/devices/list")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            return r.get("payload", {}).get("deviceInfos", [])
-        return []
-
-    def find_mouse(self):
-        for dev in self.get_devices():
-            if dev.get("deviceType") == "MOUSE":
-                return dev
-        return None
-
-    def get_profiles(self):
-        """Get all profiles from agent."""
-        r = self.call("GET", "/v2/profiles")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            return r.get("payload", {}).get("profiles", [])
-        return []
-
-    def get_default_profile(self):
-        """Find the default (non-app) profile."""
-        for p in self.get_profiles():
-            if "application_id" not in p.get("applicationId", ""):
-                return p
-        return None
-
-    def find_profile(self, name):
-        """Find a profile by name or ID. Supports short names like 'safari', 'chrome'."""
-        profiles = self.get_profiles()
-        name_lower = name.lower()
-        for p in profiles:
-            pid = p.get("id", "")
-            app_id = p.get("applicationId", "")
-            if pid == name or app_id == name:
-                return p
-            # Match short names: "safari" -> "application_id_apple_safari"
-            if name_lower in app_id.lower():
-                return p
-        return None
-
-    def get_profile_assignments(self, profile_id, device_id, tags=None):
-        """Get button assignments for a profile via /v2/profiles/slice/preview."""
-        payload = {
-            "profileId": profile_id,
-            "appId": profile_id,
-            "deviceId": device_id,
-        }
-        if tags:
-            payload["tags"] = tags
-        r = self.call("GET", "/v2/profiles/slice/preview", payload)
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            return r.get("payload", {}).get("assignments", [])
-        return []
-
-
-# Button name mapping for MX Master 3S
-BUTTON_NAMES = {
-    "c82": "Middle Button",
-    "c83": "Back",
-    "c86": "Forward",
-    "c195": "Gesture Button",
-    "c196": "Mode Shift (Scroll)",
-    "mouse_settings": "Pointer Settings",
-    "mouse_scroll_wheel_settings": "Scroll Wheel",
-    "mouse_thumb_wheel_settings": "Thumb Wheel",
-    "thumb_wheel_adapter": "Thumb Wheel Adapter",
-}
-
-CARD_NAMES = {
-    "card_global_presets_gesture_button_highlights": "Gesture (Highlights)",
-    "card_global_presets_middle_button": "Middle Click",
-    "card_global_presets_osx_back": "Back",
-    "card_global_presets_osx_forward": "Forward",
-    "card_global_presets_osx_mission_control": "Mission Control",
-    "card_global_presets_osx_smart_zoom": "Smart Zoom",
-    "card_global_presets_osx_launch_pad": "Launchpad",
-    "card_global_presets_mode_shift": "Mode Shift",
-    "card_global_presets_one_of_gesture_button": "Gesture Button",
-    "card_global_presets_osx_horizontal_scroll": "Horizontal Scroll",
-}
-
-# Shorthand action names -> card IDs for button remapping
-ACTION_ALIASES = {
-    "back": "card_global_presets_osx_back",
-    "forward": "card_global_presets_osx_forward",
-    "middle": "card_global_presets_middle_button",
-    "mission-control": "card_global_presets_osx_mission_control",
-    "launchpad": "card_global_presets_osx_launch_pad",
-    "smart-zoom": "card_global_presets_osx_smart_zoom",
-    "undo": "card_global_presets_osx_undo",
-    "redo": "card_global_presets_osx_redo",
-    "copy": "card_global_presets_osx_copy",
-    "paste": "card_global_presets_osx_paste",
-    "cut": "card_global_presets_osx_cut",
-    "screenshot": "card_global_presets_osx_screen_capture",
-    "emoji": "card_global_presets_osx_emoji",
-    "search": "card_global_presets_osx_search",
-    "desktop": "card_global_presets_osx_hide_show_desktop",
-    "close-tab": "card_global_presets_osx_close_tab",
-    "do-not-disturb": "card_global_presets_osx_do_not_disturb",
-    "lookup": "card_global_presets_osx_lookup",
-    "switch-apps": "card_global_presets_osx_switch_apps",
-    "dictation": "card_global_presets_osx_dictation",
-    "gesture": "card_global_presets_one_of_gesture_button",
-    "mode-shift": "card_global_presets_mode_shift",
-}
-
-# HID keyboard usage codes for common keys
-HID_KEYS = {
-    "a": 4, "b": 5, "c": 6, "d": 7, "e": 8, "f": 9, "g": 10, "h": 11,
-    "i": 12, "j": 13, "k": 14, "l": 15, "m": 16, "n": 17, "o": 18, "p": 19,
-    "q": 20, "r": 21, "s": 22, "t": 23, "u": 24, "v": 25, "w": 26, "x": 27,
-    "y": 28, "z": 29,
-    "1": 30, "2": 31, "3": 32, "4": 33, "5": 34,
-    "6": 35, "7": 36, "8": 37, "9": 38, "0": 39,
-    "enter": 40, "esc": 41, "backspace": 42, "tab": 43, "space": 44,
-    "-": 45, "=": 46, "[": 47, "]": 48, "\\": 49,
-    ";": 51, "'": 52, "`": 53, ",": 54, ".": 55, "/": 56,
-    "f1": 58, "f2": 59, "f3": 60, "f4": 61, "f5": 62, "f6": 63,
-    "f7": 64, "f8": 65, "f9": 66, "f10": 67, "f11": 68, "f12": 69,
-    "delete": 76, "right": 79, "left": 80, "down": 81, "up": 82,
-}
-
-# HID modifier codes (Left variants)
-HID_MODIFIERS = {
-    "ctrl": 224, "shift": 225, "alt": 226, "opt": 226, "option": 226,
-    "cmd": 227, "command": 227,
-}
-
-
-def parse_keystroke(combo):
-    """Parse 'Cmd+Shift+Z' into HID keystroke dict. Returns (card, action_name) or None."""
-    parts = [p.strip().lower() for p in combo.split("+")]
-    if not parts:
-        return None
-
-    key_part = parts[-1]
-    mod_parts = parts[:-1]
-
-    key_code = HID_KEYS.get(key_part)
-    if key_code is None:
-        return None
-
-    modifiers = []
-    mod_names = []
-    for m in mod_parts:
-        mod_code = HID_MODIFIERS.get(m)
-        if mod_code is None:
-            return None
-        modifiers.append(mod_code)
-        mod_names.append(m.capitalize())
-
-    action_name = " + ".join(mod_names + [key_part.upper()])
-
-    card = {
-        "id": f"custom_keystroke_{combo.replace('+', '_').lower()}",
-        "name": action_name,
-        "attribute": "MACRO_PLAYBACK",
-        "readOnly": False,
-        "macro": {
-            "type": "KEYSTROKE",
-            "actionName": action_name,
-            "keystroke": {
-                "code": key_code,
-                "modifiers": modifiers,
-                "virtualKeyId": "",
-            },
-        },
-        "tags": ["PRESET_TAG_KEY_OR_BUTTON"],
-    }
-    return card
-
-
-
-def get_button_name(slot_id, slot_prefix="mx-master-3s-2b034"):
-    suffix = slot_id.replace(f"{slot_prefix}_", "")
-    return BUTTON_NAMES.get(suffix, suffix)
-
-
-def get_action_name(assignment):
-    card_data = assignment.get("card", {})
-    card_id = card_data.get("id", assignment.get("cardId", ""))
-    card_name = card_data.get("name", "")
-
-    if card_id in CARD_NAMES:
-        return CARD_NAMES[card_id]
-
-    if card_id.startswith("card_global_presets_"):
-        return card_id.replace("card_global_presets_", "").replace("_", " ").title()
-
-    attr = card_data.get("attribute", "")
-    if attr == "MOUSE_SCROLL_WHEEL_SETTINGS":
-        s = card_data.get("mouseScrollWheelSettings", {})
-        ss = s.get("smartshift", {})
-        return f"SmartShift={ss.get('mode','?')} sens={ss.get('sensitivity','?')} speed={s.get('speed','?')}"
-
-    if attr == "MOUSE_SETTINGS":
-        ps = card_data.get("mouseSettings", {}).get("pointerSpeed", {}).get("active", {})
-        return f"PointerSpeed={ps.get('value','?')} dpi_level={ps.get('dpiLevel','?')}"
-
-    if attr == "MOUSE_THUMB_WHEEL_SETTINGS":
-        ts = card_data.get("mouseThumbWheelSettings", {})
-        return f"dir={ts.get('dir','?')} smooth={ts.get('isSmooth','?')}"
-
-    if card_name:
-        return card_name.replace("ASSIGNMENT_NAME_", "").replace("_", " ").title()
-
-    return card_id or "Unknown"
-
+# ---------------------------------------------------------------------------
+# Commands
+# ---------------------------------------------------------------------------
 
 def cmd_status(args):
-    """Show live device status from agent."""
     agent = LogiAgent()
+    mouse = agent.require_mouse()
+    did = mouse["id"]
 
-    devices = agent.get_devices()
-    mice = [d for d in devices if d.get("deviceType") == "MOUSE"]
+    print(f"  {mouse.get('displayName', '?')} ({mouse.get('extendedDisplayName', '')})")
+    print(f"    State:      {mouse.get('state', '?')}")
+    print(f"    Connection: {mouse.get('connectionType', '?')}")
+    print(f"    Firmware:   {mouse.get('activeInterfaces', [{}])[0].get('firmwareVersion', '?')}")
 
-    if not mice:
-        print("No mouse connected.")
-        agent.close()
-        return
+    p = agent.get_ok(f"/battery/{did}/state")
+    if p:
+        charging = " (charging)" if p.get("charging") else ""
+        print(f"    Battery:    {p.get('percentage', '?')}% [{p.get('level', '?')}]{charging}")
 
-    for dev in mice:
-        did = dev.get("id", "?")
-        print(f"  {dev.get('displayName', '?')} ({dev.get('extendedDisplayName', '')})")
-        print(f"    State:      {dev.get('state', '?')}")
-        print(f"    Connection: {dev.get('connectionType', '?')}")
-        print(f"    Firmware:   {dev.get('activeInterfaces', [{}])[0].get('firmwareVersion', '?')}")
+    p = agent.get_ok(f"/mouse/{did}/pointer_speed")
+    if p:
+        speed = p.get("active", {}).get("value", 0)
+        info = agent.get_ok(f"/mouse/{did}/info")
+        dpi_est = ""
+        if info:
+            rng = info.get("dpiInfo", {}).get("range", {})
+            dpi_min, dpi_max = rng.get("min", 200), rng.get("max", 8000)
+            dpi_est = f" (~{int(dpi_min + speed * (dpi_max - dpi_min))} DPI)"
+        print(f"    Pointer:    speed={speed}{dpi_est}")
 
-        # Live battery
-        r = agent.call("GET", f"/battery/{did}/state")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            p = r["payload"]
-            charging = " (charging)" if p.get("charging") else ""
-            print(f"    Battery:    {p.get('percentage', '?')}% [{p.get('level', '?')}]{charging}")
+    p = agent.get_ok(f"/smartshift/{did}/params")
+    if p:
+        print(f"    SmartShift: mode={p.get('mode','?')} sensitivity={p.get('sensitivity','?')} enabled={p.get('isEnabled','?')}")
 
-        # Pointer speed + estimated DPI
-        r = agent.call("GET", f"/mouse/{did}/pointer_speed")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            ps = r["payload"].get("active", {})
-            speed = ps.get("value", 0)
-            dpi_info = agent.call("GET", f"/mouse/{did}/info")
-            dpi_est = ""
-            if dpi_info and dpi_info.get("result", {}).get("code") == "SUCCESS":
-                rng = dpi_info["payload"].get("dpiInfo", {}).get("range", {})
-                dpi_min, dpi_max = rng.get("min", 200), rng.get("max", 8000)
-                dpi_val = int(dpi_min + speed * (dpi_max - dpi_min))
-                dpi_est = f" (~{dpi_val} DPI)"
-            print(f"    Pointer:    speed={speed}{dpi_est}")
+    p = agent.get_ok(f"/scrollwheel/{did}/params")
+    if p:
+        print(f"    Scroll:     speed={p.get('speed','?')} dir={p.get('dir','?')} smooth={p.get('isSmooth','?')}")
 
-        # SmartShift
-        r = agent.call("GET", f"/smartshift/{did}/params")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            p = r["payload"]
-            print(f"    SmartShift: mode={p.get('mode','?')} sensitivity={p.get('sensitivity','?')} enabled={p.get('isEnabled','?')}")
-
-        # Scroll wheel
-        r = agent.call("GET", f"/scrollwheel/{did}/params")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            p = r["payload"]
-            print(f"    Scroll:     speed={p.get('speed','?')} dir={p.get('dir','?')} smooth={p.get('isSmooth','?')}")
-
-        # Mouse info (DPI range)
-        r = agent.call("GET", f"/mouse/{did}/info")
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            dpi_range = r["payload"].get("dpiInfo", {}).get("range", {})
-            if dpi_range:
-                print(f"    DPI Range:  {dpi_range.get('min',0)}-{dpi_range.get('max',0)} (step {dpi_range.get('steps',0)})")
+    info = agent.get_ok(f"/mouse/{did}/info")
+    if info:
+        rng = info.get("dpiInfo", {}).get("range", {})
+        if rng:
+            print(f"    DPI Range:  {rng.get('min',0)}-{rng.get('max',0)} (step {rng.get('steps',0)})")
 
     agent.close()
 
 
 def cmd_set(args):
-    """Set a device parameter."""
     agent = LogiAgent()
-    mouse = agent.find_mouse()
-    if not mouse:
-        print("No mouse connected.", file=sys.stderr)
-        agent.close()
-        sys.exit(1)
-
+    mouse = agent.require_mouse()
     did = mouse["id"]
-    param = args.param
-    value = args.value
-
-    r = None
+    param, value = args.param, args.value
 
     if param == "dpi":
-        # Get DPI range from device
-        info = agent.call("GET", f"/mouse/{did}/info")
-        if not info or info.get("result", {}).get("code") != "SUCCESS":
-            print("Error: could not read DPI info", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
-        dpi_range = info["payload"].get("dpiInfo", {}).get("range", {})
-        dpi_min = dpi_range.get("min", 200)
-        dpi_max = dpi_range.get("max", 8000)
-        dpi_step = dpi_range.get("steps", 50)
-
-        val = int(value)
-        val = round(val / dpi_step) * dpi_step  # snap to step
+        info = agent.get_ok(f"/mouse/{did}/info")
+        if not info:
+            print("Error: could not read DPI info", file=sys.stderr); sys.exit(1)
+        rng = info.get("dpiInfo", {}).get("range", {})
+        dpi_min, dpi_max, dpi_step = rng.get("min", 200), rng.get("max", 8000), rng.get("steps", 50)
+        val = round(int(value) / dpi_step) * dpi_step
         if not (dpi_min <= val <= dpi_max):
-            print(f"Error: DPI must be between {dpi_min} and {dpi_max} (step {dpi_step})", file=sys.stderr)
-            sys.exit(1)
-
-        # Convert DPI to pointer speed (0.0-1.0 linear mapping)
+            print(f"Error: DPI must be {dpi_min}-{dpi_max} (step {dpi_step})", file=sys.stderr); sys.exit(1)
         speed = (val - dpi_min) / (dpi_max - dpi_min)
-        cur = agent.call("GET", f"/mouse/{did}/pointer_speed")
-        dpi_level = 1
-        if cur and cur.get("result", {}).get("code") == "SUCCESS":
-            dpi_level = cur["payload"].get("active", {}).get("dpiLevel", 1)
-        r = agent.call("SET", f"/mouse/{did}/pointer_speed", {
-            "active": {"value": speed, "highResolutionSensorActive": False, "dpiLevel": dpi_level}
-        })
-        if r and r.get("result", {}).get("code") == "SUCCESS":
+        cur = agent.get_ok(f"/mouse/{did}/pointer_speed") or {}
+        dpi_level = cur.get("active", {}).get("dpiLevel", 1)
+        if agent.set_ok(f"/mouse/{did}/pointer_speed",
+                        {"active": {"value": speed, "highResolutionSensorActive": False, "dpiLevel": dpi_level}}):
             print(f"OK: DPI ~ {val} (speed={speed:.3f})")
-            agent.close()
-            return
 
     elif param == "speed":
         val = float(value)
         if not (0.0 <= val <= 1.0):
-            print("Error: speed must be between 0.0 and 1.0", file=sys.stderr)
-            sys.exit(1)
-        r = agent.call("SET", f"/mouse/{did}/pointer_speed", {
-            "active": {"value": val, "highResolutionSensorActive": False, "dpiLevel": 1}
-        })
+            print("Error: speed must be 0.0-1.0", file=sys.stderr); sys.exit(1)
+        if agent.set_ok(f"/mouse/{did}/pointer_speed",
+                        {"active": {"value": val, "highResolutionSensorActive": False, "dpiLevel": 1}}):
+            print(f"OK: speed = {val}")
+
+    elif param == "smartshift":
+        modes = {"on": ("RATCHET", True), "ratchet": ("RATCHET", True),
+                 "free": ("FREESPIN", True), "freespin": ("FREESPIN", True),
+                 "off": ("RATCHET", False)}
+        if value.lower() not in modes:
+            print("Error: value must be on/off/free", file=sys.stderr); sys.exit(1)
+        mode, enabled = modes[value.lower()]
+        cur = agent.get_ok(f"/smartshift/{did}/params")
+        if not cur:
+            print("Error: could not read SmartShift settings", file=sys.stderr); sys.exit(1)
+        cur.pop("@type", None)
+        cur["isEnabled"], cur["mode"] = enabled, mode
+        if agent.set_ok(f"/smartshift/{did}/params", cur):
+            print(f"OK: smartshift = {value}")
 
     elif param == "smartshift-sensitivity":
         val = int(value)
         if not (0 <= val <= 100):
-            print("Error: sensitivity must be between 0 and 100", file=sys.stderr)
-            sys.exit(1)
-        # Get current to preserve other fields
-        cur = agent.call("GET", f"/smartshift/{did}/params")
-        if cur and cur.get("result", {}).get("code") == "SUCCESS":
-            payload = cur["payload"]
-            payload.pop("@type", None)
-            payload["sensitivity"] = val
-            r = agent.call("SET", f"/smartshift/{did}/params", payload)
-        else:
-            print("Error: could not read current smartshift settings", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
+            print("Error: sensitivity must be 0-100", file=sys.stderr); sys.exit(1)
+        cur = agent.get_ok(f"/smartshift/{did}/params")
+        if not cur:
+            print("Error: could not read SmartShift settings", file=sys.stderr); sys.exit(1)
+        cur.pop("@type", None)
+        cur["sensitivity"] = val
+        if agent.set_ok(f"/smartshift/{did}/params", cur):
+            print(f"OK: smartshift-sensitivity = {val}")
 
-    elif param == "smartshift":
-        if value.lower() in ("on", "true", "1", "enabled", "ratchet"):
-            mode = "RATCHET"
-            enabled = True
-        elif value.lower() in ("free", "freespin"):
-            mode = "FREESPIN"
-            enabled = True
-        elif value.lower() in ("off", "false", "0", "disabled"):
-            enabled = False
-            mode = "RATCHET"
+    elif param in ("scroll-speed", "scroll-direction"):
+        cur = agent.get_ok(f"/scrollwheel/{did}/params")
+        if not cur:
+            print("Error: could not read scroll settings", file=sys.stderr); sys.exit(1)
+        cur.pop("@type", None)
+        if param == "scroll-speed":
+            cur["speed"] = float(value)
         else:
-            print("Error: value must be on/off/free", file=sys.stderr)
-            sys.exit(1)
-        cur = agent.call("GET", f"/smartshift/{did}/params")
-        if cur and cur.get("result", {}).get("code") == "SUCCESS":
-            payload = cur["payload"]
-            payload.pop("@type", None)
-            payload["isEnabled"] = enabled
-            payload["mode"] = mode
-            r = agent.call("SET", f"/smartshift/{did}/params", payload)
-        else:
-            print("Error: could not read current smartshift settings", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
-
-    elif param == "scroll-speed":
-        val = float(value)
-        cur = agent.call("GET", f"/scrollwheel/{did}/params")
-        if cur and cur.get("result", {}).get("code") == "SUCCESS":
-            payload = cur["payload"]
-            payload.pop("@type", None)
-            payload["speed"] = val
-            r = agent.call("SET", f"/scrollwheel/{did}/params", payload)
-        else:
-            print("Error: could not read current scroll settings", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
-
-    elif param == "scroll-direction":
-        if value.lower() in ("natural", "inverted"):
-            direction = "NATURAL"
-        elif value.lower() in ("standard", "normal", "default"):
-            direction = "STANDARD"
-        else:
-            print("Error: value must be natural or standard", file=sys.stderr)
-            sys.exit(1)
-        cur = agent.call("GET", f"/scrollwheel/{did}/params")
-        if cur and cur.get("result", {}).get("code") == "SUCCESS":
-            payload = cur["payload"]
-            payload.pop("@type", None)
-            payload["dir"] = direction
-            r = agent.call("SET", f"/scrollwheel/{did}/params", payload)
-        else:
-            print("Error: could not read current scroll settings", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
+            dirs = {"natural": "NATURAL", "standard": "STANDARD", "normal": "STANDARD"}
+            if value.lower() not in dirs:
+                print("Error: value must be natural or standard", file=sys.stderr); sys.exit(1)
+            cur["dir"] = dirs[value.lower()]
+        if agent.set_ok(f"/scrollwheel/{did}/params", cur):
+            print(f"OK: {param} = {value}")
 
     else:
         print(f"Unknown parameter: {param}", file=sys.stderr)
         print("Available: dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction", file=sys.stderr)
-        agent.close()
         sys.exit(1)
-
-    if r:
-        code = r.get("result", {}).get("code", "?")
-        if code == "SUCCESS":
-            print(f"OK: {param} = {value}")
-        else:
-            print(f"Error: {code} - {r.get('result', {}).get('what', '')}", file=sys.stderr)
-    else:
-        print("Error: no response from agent", file=sys.stderr)
 
     agent.close()
 
 
 def cmd_button(args):
-    """Set a button action."""
     button = args.button.lower()
     action = args.action.lower()
 
-    # Resolve button name to slot suffix
-    button_map = {"middle": "c82", "back": "c83", "forward": "c86", "gesture": "c195"}
-    slot_suffix = button_map.get(button)
+    slot_suffix = BUTTON_SLOTS.get(button)
     if not slot_suffix:
         print(f"Unknown button: {button}", file=sys.stderr)
-        print(f"Available: {', '.join(sorted(button_map.keys()))}", file=sys.stderr)
+        print(f"Available: {', '.join(sorted(BUTTON_SLOTS))}", file=sys.stderr)
         sys.exit(1)
 
-    # Resolve action to card ID or custom keystroke
+    # Resolve action
     custom_card = None
     card_id = ACTION_ALIASES.get(action)
     if not card_id:
         if action.startswith("card_"):
             card_id = action
         elif "+" in args.action:
-            # Try as keystroke combo (preserve original case for parsing)
             custom_card = parse_keystroke(args.action)
             if not custom_card:
                 print(f"Invalid keystroke: {args.action}", file=sys.stderr)
-                print("Format: Cmd+Z, Ctrl+Shift+A, Alt+F4, etc.", file=sys.stderr)
+                print("Format: Cmd+Z, Ctrl+Shift+A, etc.", file=sys.stderr)
                 sys.exit(1)
             card_id = custom_card["id"]
         else:
-            print(f"Unknown action: {action}", file=sys.stderr)
-            print(f"Available: {', '.join(sorted(ACTION_ALIASES.keys()))}", file=sys.stderr)
-            print("Or use a keystroke combo: Cmd+Z, Ctrl+Shift+A, etc.", file=sys.stderr)
+            _print_action_help(action)
             sys.exit(1)
 
     agent = LogiAgent()
-    mouse = agent.find_mouse()
-    if not mouse:
-        print("No mouse connected.", file=sys.stderr)
-        agent.close()
-        sys.exit(1)
+    mouse = agent.require_mouse()
+    profile = agent.require_profile(args.profile)
+    slot_id = f"{mouse.get('slotPrefix')}_{slot_suffix}"
 
-    if args.profile:
-        profile = agent.find_profile(args.profile)
-        if not profile:
-            print(f"Error: profile '{args.profile}' not found", file=sys.stderr)
-            agent.close()
-            sys.exit(1)
-    else:
-        profile = agent.get_default_profile()
-    if not profile:
-        print("Error: could not determine default profile", file=sys.stderr)
-        agent.close()
-        sys.exit(1)
-
-    profile_id = profile["id"]
-    slot_prefix = mouse.get("slotPrefix", "mx-master-3s-2b034")
-    slot_id = f"{slot_prefix}_{slot_suffix}"
-
-    # Build card: custom keystroke or find existing template
     if custom_card:
         card = custom_card
     else:
@@ -618,107 +191,83 @@ def cmd_button(args):
         if not card:
             card = {"id": card_id, "attribute": "MACRO_PLAYBACK", "readOnly": True}
 
-    assignment = {
-        "cardId": card_id,
-        "slotId": slot_id,
-        "tags": ["UI_PAGE_BUTTONS"],
-        "card": card,
-    }
+    if agent.set_ok("/v2/assignment", {
+        "profileId": profile["id"],
+        "assignment": {"cardId": card_id, "slotId": slot_id, "tags": ["UI_PAGE_BUTTONS"], "card": card},
+    }):
+        print(f"OK: {BUTTON_NAMES.get(slot_suffix, button)} -> {action}")
 
-    r = agent.call("SET", "/v2/assignment", {"profileId": profile_id, "assignment": assignment})
-    if r:
-        code = r.get("result", {}).get("code", "?")
-        if code == "SUCCESS":
-            btn_name = BUTTON_NAMES.get(slot_suffix, button)
-            print(f"OK: {btn_name} -> {action}")
-        else:
-            print(f"Error: {code} - {r.get('result', {}).get('what', '')}", file=sys.stderr)
-    else:
-        print("Error: no response from agent", file=sys.stderr)
     agent.close()
 
 
+def _print_action_help(attempted):
+    """Print helpful action suggestions, using fzf if available."""
+    all_actions = sorted(ACTION_ALIASES.keys())
+
+    if shutil.which("fzf") and sys.stdin.isatty():
+        print(f"Unknown action: {attempted}. Select one:", file=sys.stderr)
+        try:
+            result = subprocess.run(
+                ["fzf", "--height=15", "--prompt=Action> "],
+                input="\n".join(all_actions),
+                capture_output=True, text=True,
+            )
+            if result.returncode == 0 and result.stdout.strip():
+                print(f"Hint: logi button <button> {result.stdout.strip()}", file=sys.stderr)
+                return
+        except Exception:
+            pass
+
+    print(f"Unknown action: {attempted}", file=sys.stderr)
+    print(f"Available: {', '.join(all_actions)}", file=sys.stderr)
+    print("Or use a keystroke combo: Cmd+Z, Ctrl+Shift+A, etc.", file=sys.stderr)
+
+
 def cmd_buttons(args):
-    """Show current button assignments."""
     agent = LogiAgent()
-    mouse = agent.find_mouse()
-    if not mouse:
-        print("No mouse connected.", file=sys.stderr)
-        agent.close()
-        return
-
+    mouse = agent.require_mouse()
     did = mouse["id"]
-    slot_prefix = mouse.get("slotPrefix", "mx-master-3s-2b034")
+    slot_prefix = mouse.get("slotPrefix", "")
+    profile = agent.require_profile(args.profile)
 
-    if args.profile:
-        profile = agent.find_profile(args.profile)
-        if not profile:
-            print(f"Error: profile '{args.profile}' not found", file=sys.stderr)
-            agent.close()
-            return
-    else:
-        profile = agent.get_default_profile()
-
-    if not profile:
-        print("Error: could not determine profile", file=sys.stderr)
-        agent.close()
-        return
-
-    profile_id = profile["id"]
-    profile_label = args.profile or "Default"
-    assignments = agent.get_profile_assignments(profile_id, did, ["UI_PAGE_BUTTONS"])
-    print(f"  Button Assignments (Profile: {profile_label})")
+    assignments = agent.get_profile_assignments(profile["id"], did, ["UI_PAGE_BUTTONS"])
+    print(f"  Button Assignments (Profile: {args.profile or 'Default'})")
     print()
-
     for a in assignments:
-        slot_id = a.get("slotId", "?")
+        slot_id = a.get("slotId", "")
         if slot_prefix not in slot_id:
             continue
-        btn = get_button_name(slot_id, slot_prefix)
-        action = get_action_name(a)
-        print(f"    {btn:25s} -> {action}")
-
+        print(f"    {get_button_name(slot_id, slot_prefix):25s} -> {get_action_name(a)}")
     agent.close()
 
 
 def cmd_profiles(args):
-    """List all profiles."""
     agent = LogiAgent()
-    profiles = agent.get_profiles()
-
-    for p in profiles:
-        pid = p.get("id", "?")
-        name = p.get("name", "?")
+    for p in agent.get_profiles():
         app_id = p.get("applicationId", "")
-        active = p.get("activeForApplication", False)
-        n = len(p.get("assignments", []))
         is_default = "application_id" not in app_id
-
         label = "Default" if is_default else app_id
-        marker = " *" if active else ""
-        print(f"  {label}{marker}: {pid} ({n} assignments)")
-
+        marker = " *" if p.get("activeForApplication") else ""
+        n = len(p.get("assignments", []))
+        print(f"  {label}{marker}: {p.get('id', '?')} ({n} assignments)")
     agent.close()
 
 
 def cmd_info(args):
-    """Show agent and system info."""
     agent = LogiAgent()
 
-    r = agent.call("GET", "/system/info")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        print(f"  Apple Silicon: {r['payload'].get('isCpuAppleSilicon', '?')}")
+    p = agent.get_ok("/system/info")
+    if p:
+        print(f"  Apple Silicon: {p.get('isCpuAppleSilicon', '?')}")
 
-    r = agent.call("GET", "/scarif/info")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        p = r["payload"]
+    p = agent.get_ok("/scarif/info")
+    if p:
         print(f"  App Version:  {p.get('appVersion', '?')}")
         print(f"  OS:           {p.get('osName', '?')} {p.get('osVersion', '?')}")
         print(f"  Mac Model:    {p.get('model', '?')}")
 
-    r = agent.call("GET", "/configuration")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        p = r["payload"]
+    p = agent.get_ok("/configuration")
+    if p:
         print(f"  Language:     {p.get('language', {}).get('value', '?')}")
         print(f"  Theme:        {p.get('theme', {}).get('value', '?')}")
 
@@ -726,275 +275,169 @@ def cmd_info(args):
 
 
 def cmd_watch(args):
-    """Watch real-time device events."""
     agent = LogiAgent()
-
-    # Subscribe to additional event channels
-    watch_paths = [
-        "/devices/state/changed",
-        "/battery/state/changed",
-        "/devices/options/device_arrival",
-        "/devices/options/device_removal",
-        "/devices/easy_switch",
-        "/mouse/global/swap",
-        "/devices/fn_inversion/notify",
-    ]
-    for p in watch_paths:
+    for p in ["/devices/state/changed", "/battery/state/changed",
+              "/devices/options/device_arrival", "/devices/options/device_removal",
+              "/devices/easy_switch", "/mouse/global/swap", "/devices/fn_inversion/notify"]:
         agent._send("SUBSCRIBE", p)
 
     running = True
+    signal.signal(signal.SIGINT, lambda *_: setattr(cmd_watch, '_stop', True))
+    cmd_watch._stop = False
 
-    def handle_sigint(sig, frame):
-        nonlocal running
-        running = False
-
-    signal.signal(signal.SIGINT, handle_sigint)
-
-    print("Watching device events... (Ctrl+C to stop)")
-    print()
-
-    while running:
+    print("Watching device events... (Ctrl+C to stop)\n")
+    while not cmd_watch._stop:
         msg = agent.recv_message(timeout=1)
-        if msg is None:
+        if not msg:
             continue
-
         ts = datetime.datetime.now().strftime("%H:%M:%S")
-        verb = msg.get("verb", "?")
         path = msg.get("path", "?")
         payload = msg.get("payload", {})
-        ptype = payload.get("@type", "")
 
-        # Format based on event type
-        if "battery" in path.lower():
-            pct = payload.get("percentage", "?")
-            level = payload.get("level", "")
-            charging = " charging" if payload.get("charging") else ""
-            print(f"  [{ts}] Battery: {pct}% {level}{charging}")
-
+        if "battery" in path:
+            print(f"  [{ts}] Battery: {payload.get('percentage','?')}% {payload.get('level','')}")
         elif "device_arrival" in path or "device_removal" in path:
             event = "connected" if "arrival" in path else "disconnected"
-            infos = payload.get("deviceInfos", [])
-            for d in infos:
-                name = d.get("displayName", "device")
-                print(f"  [{ts}] Device {event}: {name}")
-            if not infos:
-                print(f"  [{ts}] Device {event}")
-
+            for d in payload.get("deviceInfos", [{}]):
+                print(f"  [{ts}] Device {event}: {d.get('displayName', '?')}")
         elif "state/changed" in path:
-            infos = payload.get("deviceInfos", [])
-            for d in infos:
-                name = d.get("displayName", "device")
-                state = d.get("state", "?")
-                print(f"  [{ts}] {name}: state={state}")
-            if not infos:
-                type_name = ptype.split(".")[-1] if ptype else "unknown"
-                print(f"  [{ts}] State changed ({type_name})")
-
-        elif "easy_switch" in path:
-            print(f"  [{ts}] Easy Switch event")
-
+            for d in payload.get("deviceInfos", []):
+                print(f"  [{ts}] {d.get('displayName','?')}: state={d.get('state','?')}")
         else:
-            type_name = ptype.split(".")[-1] if ptype else ""
-            print(f"  [{ts}] {verb} {path} ({type_name})")
+            ptype = payload.get("@type", "").split(".")[-1]
+            print(f"  [{ts}] {msg.get('verb','?')} {path} ({ptype})")
 
     print("\nStopped.")
     agent.close()
 
 
 def cmd_export(args):
-    """Export device configuration to JSON."""
     agent = LogiAgent()
-    mouse = agent.find_mouse()
-    if not mouse:
-        print("Error: No mouse connected.", file=sys.stderr)
-        agent.close()
-        sys.exit(1)
-
+    mouse = agent.require_mouse()
     did = mouse["id"]
-    config = {
-        "device": {
-            "displayName": mouse.get("displayName"),
-            "deviceModel": mouse.get("deviceModel"),
-            "slotPrefix": mouse.get("slotPrefix"),
-        },
-    }
 
-    # Pointer speed
-    r = agent.call("GET", f"/mouse/{did}/pointer_speed")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        p = r["payload"]
-        p.pop("@type", None)
-        config["pointer_speed"] = p
+    config = {"device": {
+        "displayName": mouse.get("displayName"),
+        "deviceModel": mouse.get("deviceModel"),
+        "slotPrefix": mouse.get("slotPrefix"),
+    }}
 
-    # SmartShift
-    r = agent.call("GET", f"/smartshift/{did}/params")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        p = r["payload"]
-        p.pop("@type", None)
-        config["smartshift"] = p
+    for key, path in [("pointer_speed", f"/mouse/{did}/pointer_speed"),
+                       ("smartshift", f"/smartshift/{did}/params"),
+                       ("scroll_wheel", f"/scrollwheel/{did}/params")]:
+        p = agent.get_ok(path)
+        if p:
+            p.pop("@type", None)
+            config[key] = p
 
-    # Scroll wheel
-    r = agent.call("GET", f"/scrollwheel/{did}/params")
-    if r and r.get("result", {}).get("code") == "SUCCESS":
-        p = r["payload"]
-        p.pop("@type", None)
-        config["scroll_wheel"] = p
-
-    # Button assignments (default profile)
     profile = agent.get_default_profile()
     if profile:
-        profile_id = profile["id"]
-        assignments = agent.get_profile_assignments(profile_id, did, ["UI_PAGE_BUTTONS"])
-        config["buttons"] = {}
         slot_prefix = mouse.get("slotPrefix", "")
+        assignments = agent.get_profile_assignments(profile["id"], did, ["UI_PAGE_BUTTONS"])
+        config["buttons"] = {}
         for a in assignments:
-            slot_id = a.get("slotId", "")
-            if slot_prefix not in slot_id:
+            sid = a.get("slotId", "")
+            if slot_prefix not in sid:
                 continue
-            suffix = slot_id.replace(f"{slot_prefix}_", "")
-            btn_name = BUTTON_NAMES.get(suffix, suffix)
-            config["buttons"][btn_name] = {
-                "slotId": slot_id,
-                "cardId": a.get("card", {}).get("id", ""),
-                "card": a.get("card", {}),
+            suffix = sid.replace(f"{slot_prefix}_", "")
+            config["buttons"][BUTTON_NAMES.get(suffix, suffix)] = {
+                "slotId": sid, "cardId": a.get("card", {}).get("id", ""), "card": a.get("card", {}),
             }
 
     output = json.dumps(config, indent=2)
-
     if args.file:
         with open(args.file, "w") as f:
             f.write(output)
         print(f"Exported to {args.file}")
     else:
         print(output)
-
     agent.close()
 
 
 def cmd_import(args):
-    """Import device configuration from JSON."""
-    with open(args.file, "r") as f:
+    with open(args.file) as f:
         config = json.load(f)
 
     agent = LogiAgent()
-    mouse = agent.find_mouse()
-    if not mouse:
-        print("Error: No mouse connected.", file=sys.stderr)
-        agent.close()
-        sys.exit(1)
-
+    mouse = agent.require_mouse()
     did = mouse["id"]
     applied = []
 
-    # Pointer speed
-    if "pointer_speed" in config:
-        r = agent.call("SET", f"/mouse/{did}/pointer_speed", config["pointer_speed"])
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            val = config["pointer_speed"].get("active", {}).get("value", "?")
-            applied.append(f"pointer_speed={val}")
+    for key, path in [("pointer_speed", f"/mouse/{did}/pointer_speed"),
+                       ("smartshift", f"/smartshift/{did}/params"),
+                       ("scroll_wheel", f"/scrollwheel/{did}/params")]:
+        if key in config and agent.set_ok(path, config[key]):
+            applied.append(key)
 
-    # SmartShift
-    if "smartshift" in config:
-        r = agent.call("SET", f"/smartshift/{did}/params", config["smartshift"])
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            applied.append(f"smartshift={config['smartshift'].get('mode', '?')}")
-
-    # Scroll wheel
-    if "scroll_wheel" in config:
-        r = agent.call("SET", f"/scrollwheel/{did}/params", config["scroll_wheel"])
-        if r and r.get("result", {}).get("code") == "SUCCESS":
-            applied.append(f"scroll={config['scroll_wheel'].get('dir', '?')}")
-
-    # Button assignments
     if "buttons" in config:
         profile = agent.get_default_profile()
         if profile:
-            profile_id = profile["id"]
             for btn_name, btn_data in config["buttons"].items():
                 card = btn_data.get("card", {})
                 if not card.get("id"):
                     continue
-                assignment = {
-                    "cardId": card.get("id", ""),
-                    "slotId": btn_data.get("slotId", ""),
-                    "tags": ["UI_PAGE_BUTTONS"],
-                    "card": card,
-                }
-                r = agent.call("SET", "/v2/assignment", {
-                    "profileId": profile_id,
-                    "assignment": assignment,
-                })
-                if r and r.get("result", {}).get("code") == "SUCCESS":
+                if agent.set_ok("/v2/assignment", {
+                    "profileId": profile["id"],
+                    "assignment": {"cardId": card["id"], "slotId": btn_data["slotId"],
+                                   "tags": ["UI_PAGE_BUTTONS"], "card": card},
+                }):
                     applied.append(f"button:{btn_name}")
 
-    if applied:
-        print(f"Imported {len(applied)} settings: {', '.join(applied)}")
-    else:
-        print("No settings applied.")
-
+    print(f"Imported {len(applied)} settings: {', '.join(applied)}" if applied else "No settings applied.")
     agent.close()
 
 
 def cmd_raw(args):
-    """Send a raw request to the agent."""
     agent = LogiAgent()
     payload = json.loads(args.payload) if args.payload else None
     r = agent.call(args.verb.upper(), args.path, payload)
-    if r:
-        print(json.dumps(r, indent=2))
-    else:
-        print("No response (timeout)")
+    print(json.dumps(r, indent=2) if r else "No response (timeout)")
     agent.close()
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
 def main():
-    parser = argparse.ArgumentParser(
-        prog="logi",
-        description="CLI for Logitech Options+ device management",
-    )
+    parser = argparse.ArgumentParser(prog="logi", description="CLI for Logitech Options+ device management")
     sub = parser.add_subparsers(dest="command")
 
-    sub.add_parser("status", help="Show live device status (battery, DPI, SmartShift, scroll)")
+    sub.add_parser("status", help="Show live device status")
     sub.add_parser("watch", help="Watch real-time device events")
     sub.add_parser("info", help="Show agent and system info")
 
-    set_parser = sub.add_parser("set", help="Set a device parameter")
-    set_parser.add_argument("param", help="Parameter: dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction")
-    set_parser.add_argument("value", help="New value")
+    p = sub.add_parser("set", help="Set a device parameter")
+    p.add_argument("param", help="dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction")
+    p.add_argument("value")
 
-    button_parser = sub.add_parser("button", help="Set a button action")
-    button_parser.add_argument("button", help="Button: middle, back, forward, gesture")
-    button_parser.add_argument("action", help="Action: back, forward, undo, copy, paste, screenshot, mission-control, etc.")
-    button_parser.add_argument("--profile", help="Profile ID (default: global)")
+    p = sub.add_parser("button", help="Remap a mouse button")
+    p.add_argument("button", help="middle, back, forward, gesture")
+    p.add_argument("action", help="Preset action, card ID, or keystroke combo (Cmd+Z)")
+    p.add_argument("--profile", help="App profile (e.g. safari, zoom)")
 
-    btn_parser = sub.add_parser("buttons", help="Show button assignments")
-    btn_parser.add_argument("--profile", help="Profile ID (default: global)")
+    p = sub.add_parser("buttons", help="Show button assignments")
+    p.add_argument("--profile", help="App profile (e.g. safari, zoom)")
 
-    sub.add_parser("profiles", help="List profiles")
+    sub.add_parser("profiles", help="List all profiles")
 
-    export_parser = sub.add_parser("export", help="Export device config to JSON")
-    export_parser.add_argument("file", nargs="?", help="Output file (default: stdout)")
+    p = sub.add_parser("export", help="Export config to JSON")
+    p.add_argument("file", nargs="?", help="Output file (default: stdout)")
 
-    import_parser = sub.add_parser("import", help="Import device config from JSON")
-    import_parser.add_argument("file", help="JSON config file")
+    p = sub.add_parser("import", help="Import config from JSON")
+    p.add_argument("file", help="JSON config file")
 
-    raw_parser = sub.add_parser("raw", help="Send raw request to agent")
-    raw_parser.add_argument("verb", help="Verb (GET, SET, SUBSCRIBE)")
-    raw_parser.add_argument("path", help="API path (e.g. /permissions)")
-    raw_parser.add_argument("--payload", help="JSON payload")
+    p = sub.add_parser("raw", help="Send raw request to agent")
+    p.add_argument("verb", help="GET, SET, SUBSCRIBE")
+    p.add_argument("path")
+    p.add_argument("--payload", help="JSON payload")
 
     args = parser.parse_args()
 
     commands = {
-        "status": cmd_status,
-        "watch": cmd_watch,
-        "info": cmd_info,
-        "set": cmd_set,
-        "button": cmd_button,
-        "buttons": cmd_buttons,
-        "profiles": cmd_profiles,
-        "export": cmd_export,
-        "import": cmd_import,
+        "status": cmd_status, "watch": cmd_watch, "info": cmd_info,
+        "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
+        "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
         "raw": cmd_raw,
     }
 

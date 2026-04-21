@@ -2,5 +2,6 @@
 generated/
 __pycache__/
 *.pyc
+*.egg-info/
 traffic_*.log
 /tmp/

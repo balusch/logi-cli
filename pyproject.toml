@@ -17,7 +17,7 @@ classifiers = [
 ]
 
 [tool.setuptools]
-py-modules = ["logi"]
+py-modules = ["logi", "agent", "mappings"]
 
 [project.scripts]
 logi = "logi:main"
