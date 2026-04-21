@@ -493,10 +493,62 @@ def cmd_apply(args):
 
     agent = LogiAgent()
     mouse = agent.require_mouse()
+    _apply_config(agent, mouse, config)
+    agent.close()
+
+
+def cmd_daemon(args):
+    """Watch for device connections and auto-apply config."""
+    if tomllib is None:
+        print("Error: TOML support requires Python 3.11+ or 'pip install tomli'", file=sys.stderr)
+        sys.exit(1)
+
+    config_file = args.config
+    with open(config_file, "rb") as f:
+        config = tomllib.load(f)
+
+    agent = LogiAgent()
+    for p in ["/devices/state/changed", "/devices/options/device_arrival"]:
+        agent._send("SUBSCRIBE", p)
+
+    signal.signal(signal.SIGINT, lambda *_: setattr(cmd_daemon, '_stop', True))
+    cmd_daemon._stop = False
+
+    print(f"Daemon: watching for device connections, will apply {config_file}")
+    print(f"Press Ctrl+C to stop.\n")
+
+    # Apply once on start if device is connected
+    mouse = agent.find_mouse()
+    if mouse:
+        print(f"  Device already connected: {mouse.get('displayName')}")
+        _apply_config(agent, mouse, config)
+
+    while not cmd_daemon._stop:
+        msg = agent.recv_message(timeout=2)
+        if not msg:
+            continue
+
+        path = msg.get("path", "")
+        if "device_arrival" in path or "state/changed" in path:
+            payload = msg.get("payload", {})
+            for d in payload.get("deviceInfos", []):
+                if d.get("deviceType") == "MOUSE" and d.get("state") == "ACTIVE":
+                    ts = datetime.datetime.now().strftime("%H:%M:%S")
+                    print(f"  [{ts}] {d.get('displayName','?')} connected, applying config...")
+                    # Re-fetch mouse to get full device info
+                    mouse = agent.find_mouse()
+                    if mouse:
+                        _apply_config(agent, mouse, config)
+
+    print("\nDaemon stopped.")
+    agent.close()
+
+
+def _apply_config(agent, mouse, config):
+    """Apply a parsed TOML config dict to a mouse device."""
     did = mouse["id"]
     applied = []
 
-    # [pointer]
     ptr = config.get("pointer", {})
     if "dpi" in ptr:
         info = agent.get_ok(f"/mouse/{did}/info")
@@ -515,7 +567,6 @@ def cmd_apply(args):
                         {"active": {"value": float(ptr["speed"]), "highResolutionSensorActive": False, "dpiLevel": 1}}):
             applied.append(f"speed={ptr['speed']}")
 
-    # [smartshift]
     ss = config.get("smartshift", {})
     if ss:
         cur = agent.get_ok(f"/smartshift/{did}/params")
@@ -532,55 +583,41 @@ def cmd_apply(args):
             if agent.set_ok(f"/smartshift/{did}/params", cur):
                 applied.append("smartshift")
 
-    # [scroll]
     scroll = config.get("scroll", {})
     if scroll:
-        def modify_scroll(settings):
-            if "speed" in scroll:
-                settings["speed"] = float(scroll["speed"])
-            if "direction" in scroll:
-                settings["dir"] = "NATURAL" if scroll["direction"].lower() == "natural" else "STANDARD"
-        if _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings",
-                            "mouseScrollWheelSettings", modify_scroll):
+        def mod_scroll(s):
+            if "speed" in scroll: s["speed"] = float(scroll["speed"])
+            if "direction" in scroll: s["dir"] = "NATURAL" if scroll["direction"].lower() == "natural" else "STANDARD"
+        if _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings", "mouseScrollWheelSettings", mod_scroll):
             applied.append("scroll")
 
-    # [thumb]
     thumb = config.get("thumb", {})
     if thumb:
-        def modify_thumb(settings):
-            if "speed" in thumb:
-                settings["speed"] = float(thumb["speed"])
-            if "direction" in thumb:
-                settings["dir"] = "NATURAL" if thumb["direction"].lower() == "natural" else "STANDARD"
-            if "smooth" in thumb:
-                settings["isSmooth"] = bool(thumb["smooth"])
-        if _set_via_profile(agent, mouse, "mouse_thumb_wheel_settings",
-                            "mouseThumbWheelSettings", modify_thumb):
+        def mod_thumb(s):
+            if "speed" in thumb: s["speed"] = float(thumb["speed"])
+            if "direction" in thumb: s["dir"] = "NATURAL" if thumb["direction"].lower() == "natural" else "STANDARD"
+            if "smooth" in thumb: s["isSmooth"] = bool(thumb["smooth"])
+        if _set_via_profile(agent, mouse, "mouse_thumb_wheel_settings", "mouseThumbWheelSettings", mod_thumb):
             applied.append("thumb")
 
-    # [buttons]
     buttons = config.get("buttons", {})
     if buttons:
         profile = agent.require_profile()
         slot_prefix = mouse.get("slotPrefix", "")
         for btn_name, action_str in buttons.items():
             slot_suffix = BUTTON_SLOTS.get(btn_name.lower())
-            if not slot_suffix:
-                continue
+            if not slot_suffix: continue
             card_id = ACTION_ALIASES.get(action_str.lower())
             custom_card = None
             if not card_id and "+" in action_str:
                 custom_card = parse_keystroke(action_str)
-                if custom_card:
-                    card_id = custom_card["id"]
-            if not card_id:
-                continue
+                if custom_card: card_id = custom_card["id"]
+            if not card_id: continue
             card = custom_card
             if not card:
                 for a in profile.get("assignments", []):
                     if a.get("card", {}).get("id") == card_id:
-                        card = a["card"]
-                        break
+                        card = a["card"]; break
             if not card:
                 card = {"id": card_id, "attribute": "MACRO_PLAYBACK", "readOnly": True}
             if agent.set_ok("/v2/assignment", {
@@ -591,10 +628,7 @@ def cmd_apply(args):
                 applied.append(f"button:{btn_name}")
 
     if applied:
-        print(f"Applied {len(applied)} settings: {', '.join(applied)}")
-    else:
-        print("No settings applied.")
-    agent.close()
+        print(f"    Applied: {', '.join(applied)}")
 
 
 def cmd_raw(args):
@@ -640,6 +674,9 @@ def main():
     p = sub.add_parser("apply", help="Apply settings from TOML config file")
     p.add_argument("file", help="TOML config file (see example.toml)")
 
+    p = sub.add_parser("daemon", help="Watch for device connections and auto-apply config")
+    p.add_argument("config", help="TOML config file to apply on connect")
+
     p = sub.add_parser("raw", help="Send raw request to agent")
     p.add_argument("verb", help="GET, SET, SUBSCRIBE")
     p.add_argument("path")
@@ -651,7 +688,7 @@ def main():
         "status": cmd_status, "watch": cmd_watch, "info": cmd_info,
         "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
         "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
-        "apply": cmd_apply, "raw": cmd_raw,
+        "apply": cmd_apply, "daemon": cmd_daemon, "raw": cmd_raw,
     }
 
     if args.command in commands:
