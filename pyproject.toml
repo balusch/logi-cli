@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "logi-cli"
+version = "0.1.0"
+description = "CLI tool for Logitech Options+ device management on macOS"
+requires-python = ">=3.9"
+license = {text = "MIT"}
+keywords = ["logitech", "mouse", "cli", "mx-master"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Hardware",
+]
+
+[tool.setuptools]
+py-modules = ["logi"]
+
+[project.scripts]
+logi = "logi:main"
