@@ -113,6 +113,32 @@ See [example.toml](example.toml) for the config format.
 logi watch                           # Watch device events (Ctrl+C to stop)
 ```
 
+### Gesture button
+
+```bash
+logi gesture window                  # Window navigation (default)
+logi gesture media                   # Media control (play/pause, volume, track)
+logi gesture pan                     # Pan and smart zoom
+logi gesture zoom                    # Zoom and rotate
+logi gesture app                     # App navigation (Mission Control, Launchpad)
+logi gesture custom                  # Custom gesture (configurable)
+```
+
+### Easy Switch & Flow
+
+```bash
+logi switch                          # Show Easy Switch channels
+logi flow                            # Show Logitech Flow status
+```
+
+### Permissions & Reset
+
+```bash
+logi permissions                     # Check macOS security permissions
+logi reset                           # Reset to factory defaults (with confirmation)
+logi reset -y                        # Skip confirmation
+```
+
 ### Multi-device
 
 ```bash
