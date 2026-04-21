@@ -205,6 +205,71 @@ ACTION_ALIASES = {
     "mode-shift": "card_global_presets_mode_shift",
 }
 
+# HID keyboard usage codes for common keys
+HID_KEYS = {
+    "a": 4, "b": 5, "c": 6, "d": 7, "e": 8, "f": 9, "g": 10, "h": 11,
+    "i": 12, "j": 13, "k": 14, "l": 15, "m": 16, "n": 17, "o": 18, "p": 19,
+    "q": 20, "r": 21, "s": 22, "t": 23, "u": 24, "v": 25, "w": 26, "x": 27,
+    "y": 28, "z": 29,
+    "1": 30, "2": 31, "3": 32, "4": 33, "5": 34,
+    "6": 35, "7": 36, "8": 37, "9": 38, "0": 39,
+    "enter": 40, "esc": 41, "backspace": 42, "tab": 43, "space": 44,
+    "-": 45, "=": 46, "[": 47, "]": 48, "\\": 49,
+    ";": 51, "'": 52, "`": 53, ",": 54, ".": 55, "/": 56,
+    "f1": 58, "f2": 59, "f3": 60, "f4": 61, "f5": 62, "f6": 63,
+    "f7": 64, "f8": 65, "f9": 66, "f10": 67, "f11": 68, "f12": 69,
+    "delete": 76, "right": 79, "left": 80, "down": 81, "up": 82,
+}
+
+# HID modifier codes (Left variants)
+HID_MODIFIERS = {
+    "ctrl": 224, "shift": 225, "alt": 226, "opt": 226, "option": 226,
+    "cmd": 227, "command": 227,
+}
+
+
+def parse_keystroke(combo):
+    """Parse 'Cmd+Shift+Z' into HID keystroke dict. Returns (card, action_name) or None."""
+    parts = [p.strip().lower() for p in combo.split("+")]
+    if not parts:
+        return None
+
+    key_part = parts[-1]
+    mod_parts = parts[:-1]
+
+    key_code = HID_KEYS.get(key_part)
+    if key_code is None:
+        return None
+
+    modifiers = []
+    mod_names = []
+    for m in mod_parts:
+        mod_code = HID_MODIFIERS.get(m)
+        if mod_code is None:
+            return None
+        modifiers.append(mod_code)
+        mod_names.append(m.capitalize())
+
+    action_name = " + ".join(mod_names + [key_part.upper()])
+
+    card = {
+        "id": f"custom_keystroke_{combo.replace('+', '_').lower()}",
+        "name": action_name,
+        "attribute": "MACRO_PLAYBACK",
+        "readOnly": False,
+        "macro": {
+            "type": "KEYSTROKE",
+            "actionName": action_name,
+            "keystroke": {
+                "code": key_code,
+                "modifiers": modifiers,
+                "virtualKeyId": "",
+            },
+        },
+        "tags": ["PRESET_TAG_KEY_OR_BUTTON"],
+    }
+    return card
+
 
 
 def get_button_name(slot_id, slot_prefix="mx-master-3s-2b034"):
@@ -424,14 +489,24 @@ def cmd_button(args):
         print(f"Available: {', '.join(sorted(button_map.keys()))}", file=sys.stderr)
         sys.exit(1)
 
-    # Resolve action to card ID
+    # Resolve action to card ID or custom keystroke
+    custom_card = None
     card_id = ACTION_ALIASES.get(action)
     if not card_id:
         if action.startswith("card_"):
             card_id = action
+        elif "+" in args.action:
+            # Try as keystroke combo (preserve original case for parsing)
+            custom_card = parse_keystroke(args.action)
+            if not custom_card:
+                print(f"Invalid keystroke: {args.action}", file=sys.stderr)
+                print("Format: Cmd+Z, Ctrl+Shift+A, Alt+F4, etc.", file=sys.stderr)
+                sys.exit(1)
+            card_id = custom_card["id"]
         else:
             print(f"Unknown action: {action}", file=sys.stderr)
             print(f"Available: {', '.join(sorted(ACTION_ALIASES.keys()))}", file=sys.stderr)
+            print("Or use a keystroke combo: Cmd+Z, Ctrl+Shift+A, etc.", file=sys.stderr)
             sys.exit(1)
 
     agent = LogiAgent()
@@ -455,22 +530,24 @@ def cmd_button(args):
     slot_prefix = mouse.get("slotPrefix", "mx-master-3s-2b034")
     slot_id = f"{slot_prefix}_{slot_suffix}"
 
-    # Find the card template from current assignments
-    existing_card = None
-    for a in profile.get("assignments", []):
-        if a.get("card", {}).get("id") == card_id:
-            existing_card = a.get("card")
-            break
+    # Build card: custom keystroke or find existing template
+    if custom_card:
+        card = custom_card
+    else:
+        card = None
+        for a in profile.get("assignments", []):
+            if a.get("card", {}).get("id") == card_id:
+                card = a.get("card")
+                break
+        if not card:
+            card = {"id": card_id, "attribute": "MACRO_PLAYBACK", "readOnly": True}
 
     assignment = {
         "cardId": card_id,
         "slotId": slot_id,
         "tags": ["UI_PAGE_BUTTONS"],
+        "card": card,
     }
-    if existing_card:
-        assignment["card"] = existing_card
-    else:
-        assignment["card"] = {"id": card_id, "attribute": "MACRO_PLAYBACK", "readOnly": True}
 
     r = agent.call("SET", "/v2/assignment", {"profileId": profile_id, "assignment": assignment})
     if r:
