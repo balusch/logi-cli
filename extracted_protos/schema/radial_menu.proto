@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package logi.radial_menu.protocol;
+
+message Button {
+}
+
+message Error {
+  string message = 1;
+}
+
+message AnalogControl {
+  double min = 1;
+  double max = 2;
+  double step = 3;
+  double value = 4;
+  string label = 8;
+  optional string adjustment_format = 5;
+  optional string scroll_format = 6;
+  optional string indicator_format = 7;
+}
+
+message WheelElement {
+  string label = 1;
+  optional int32 delta = 2;
+}
+
+message FusionElementValue {
+  string value = 1;
+  string unit = 2;
+}
+
+message FusionElementOperation {
+  int32 delta = 1;
+}
+
+message FusionElement {
+  string label = 1;
+  double fill_bar = 4;
+  double drag_sensitivity = 5;
+  bool is_unlimited = 6;
+  oneof Body {
+    .logi.radial_menu.protocol.FusionElementValue value = 2;
+    .logi.radial_menu.protocol.FusionElementOperation operation = 3;
+  }
+}
+
+message Submenu {
+  repeated .logi.radial_menu.protocol.MenuItem items = 1;
+}
+
+message RGBA8Image {
+  int32 width = 1;
+  int32 height = 2;
+  bytes data = 3;
+}
+
+message RGBColor {
+  float red = 1;
+  float green = 2;
+  float blue = 3;
+}
+
+message HSLColor {
+  float hue = 1;
+  float saturation = 2;
+  float lightness = 3;
+}
+
+message Color {
+  oneof color {
+    .logi.radial_menu.protocol.RGBColor rgb = 1;
+    .logi.radial_menu.protocol.HSLColor hsl = 2;
+  }
+}
+
+message MenuItem {
+  string id = 1;
+  string tooltip = 2;
+  .logi.radial_menu.protocol.RGBA8Image default_state_icon = 3;
+  .logi.radial_menu.protocol.RGBA8Image active_state_icon = 4;
+  bool show_progress_ring = 11;
+  .logi.radial_menu.protocol.Color primary_color = 12;
+  .logi.radial_menu.protocol.Color secondary_color = 13;
+  bool use_custom_icon = 14;
+  oneof Item {
+    .logi.radial_menu.protocol.Button button = 5;
+    .logi.radial_menu.protocol.Submenu submenu = 6;
+    .logi.radial_menu.protocol.AnalogControl analog = 7;
+    .logi.radial_menu.protocol.WheelElement wheel = 8;
+    .logi.radial_menu.protocol.FusionElement fusion = 9;
+  }
+  optional .logi.radial_menu.protocol.Error error = 10;
+}
+
+message Menu {
+  string theme = 1;
+  float scale = 2;
+  string close_image = 3;
+  repeated .logi.radial_menu.protocol.MenuItem items = 4;
+}
+

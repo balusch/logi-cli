@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package logi.protocol.settings_backup;
+
+message ListBackupsInput {
+  string device_id = 1;
+  bool only_from_this_computer = 2;
+}
+
+message ManualBackupInput {
+  string device_id = 1;
+}
+
+message RestoreBackupInput {
+  string device_id = 1;
+  string backup_id = 2;
+}
+
+message BackupStatus {
+  enum BackupType {
+    INVALID = 0;
+    AUTOMATIC = 1;
+    MANUAL = 2;
+    MANUAL_ALL = 3;
+  }
+
+  string device_id = 1;
+  .logi.protocol.settings_backup.BackupStatus.BackupType type = 2;
+  .logi.protocol.settings_backup.OperationStatus status = 3;
+  .logi.protocol.settings_backup.ErrorCode error_code = 4;
+}
+
+message RestoreStatus {
+  enum RestoreType {
+    INVALID = 0;
+    RESTORE = 1;
+  }
+
+  string device_id = 1;
+  string backup_id = 2;
+  .logi.protocol.settings_backup.RestoreStatus.RestoreType type = 3;
+  .logi.protocol.settings_backup.OperationStatus status = 4;
+  .logi.protocol.settings_backup.ErrorCode error_code = 5;
+}
+
+message BackupInfo {
+  string backup_id = 1;
+  string machine_name = 2;
+  string timestamp = 3;
+  .logi.protocol.settings_backup.BackupOS os = 4;
+  string os_version = 5;
+  string make_and_model = 6;
+  bool this_computer = 7;
+}
+
+message BackupListResult {
+  .logi.protocol.settings_backup.OperationStatus status = 1;
+  .logi.protocol.settings_backup.ErrorCode error_code = 2;
+  repeated .logi.protocol.settings_backup.BackupInfo backups = 3;
+}
+
+message PrivateSettings {
+  message KnownDevicesEntry {
+    string key = 1;
+    bool value = 2;
+  }
+
+  bool endpoint_stopped = 1;
+  repeated .logi.protocol.settings_backup.PrivateSettings.KnownDevicesEntry known_devices = 2;
+  bool do_macros_backup_exist = 3;
+}
+
+enum OperationStatus {
+  INVALID_STATUS = 0;
+  SUCCESS = 1;
+  FAILED = 2;
+  SCHEDULED = 3;
+}
+
+enum BackupOS {
+  INVALID = 0;
+  WIN = 1;
+  MAC = 2;
+}
+
+enum ErrorCode {
+  NO_ERRORS = 0;
+  UNAUTHRORIZED_NO_TOKEN = 1;
+  REQUEST_FAILED_UNKNOWN = 2;
+  ACCESS_DENIED = 3;
+  DATA_PARSING_ERROR = 4;
+  INVALID_DATA_FORMAT = 5;
+  NO_DATA_ARRIVED = 6;
+  MULTIPLE_RESULTS = 7;
+  CONNECTION_FAILURE = 8;
+  NO_ITEMS_FOUND = 9;
+  APPLY_SETTINGS_FAIL = 10;
+  FETCH_APP_SETTINGS_FAILED = 11;
+  APPLY_SETTINGS_PARSE_ERROR = 12;
+  APPLY_SETTINGS_INVALID_FORMAT = 13;
+  CANCELED = 14;
+  DATA_HAS_NO_DIFF_WITH_PREVIOUS = 15;
+  INVALID_MACHINE_ID = 16;
+  UNSUPPORTED_OS_TYPE = 17;
+  UNKNOWN_ERROR = 30;
+}
+

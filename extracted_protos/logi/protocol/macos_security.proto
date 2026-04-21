@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package logi.protocol.macos_security;
+
+message QueryPermission {
+  bool prompt = 1;
+}
+
+message PermissionState {
+  enum State {
+    INVALID = 0;
+    UNKNOWN = 1;
+    DENIED = 2;
+    GRANTED = 3;
+  }
+
+  .logi.protocol.macos_security.PermissionState.State state = 1;
+}
+
+message PermissionStateChange {
+  .logi.protocol.macos_security.PermissionState.State previous_state = 1;
+  .logi.protocol.macos_security.PermissionState.State current_state = 2;
+}
+

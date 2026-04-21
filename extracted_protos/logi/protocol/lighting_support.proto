@@ -1,0 +1,172 @@
+syntax = "proto3";
+
+package logi.protocol.lighting_support;
+
+import "logi/protocol/util.proto";
+
+message Lighting {
+  message Mode {
+    enum Control {
+      FIRMWARE = 0;
+      SOFTWARE = 1;
+      POWER_SAVING = 2;
+      LOW_BATTERY = 3;
+      EDITOR = 4;
+      SLEEP = 5;
+      TEST = 6;
+    }
+
+    enum Source {
+      PROFILE = 0;
+      EFFECT_TESTER = 1;
+      LEGACY_LED_SDK = 2;
+      LOW_BATTERY_WARNING = 3;
+      DEVICE_INACTIVITY = 4;
+      MACHINE_SLEEP = 5;
+      LED_SDK = 6;
+      BATTERY_INDICATOR = 7;
+      TESTING = 8;
+    }
+
+    .logi.protocol.lighting_support.Lighting.Mode.Control control = 1;
+    bool enabled = 2;
+    repeated .logi.protocol.lighting_support.Lighting.Mode.Source sources = 3;
+  }
+
+  enum Type {
+    INVALID_LIGHTING = 0;
+    ZONAL = 1;
+    PER_KEY = 2;
+  }
+
+}
+
+message Color {
+  message Palette {
+    repeated .logi.protocol.util.Color colors = 1;
+  }
+
+  enum Type {
+    INVALID_COLOR = 0;
+    MONO = 16;
+    RGB = 32;
+  }
+
+}
+
+message Device {
+  enum Type {
+    INVALID_DEVICE = 0;
+    MOUSE = 256;
+    KEYBOARD = 512;
+    HEADSET = 1024;
+    SPEAKER = 2048;
+    GAMEBOARD = 4096;
+    MOUSEPAD = 8192;
+    MICROPHONE = 16384;
+  }
+
+  enum Category {
+    INVALID_CATEGORY = 0;
+    MOUSE_MONO_ZONAL = 273;
+    MOUSE_RGB_ZONAL = 289;
+    MOUSE_RGB_PER_KEY = 290;
+    KEYBOARD_MONO_ZONAL = 529;
+    KEYBOARD_RGB_ZONAL = 545;
+    KEYBOARD_MONO_PER_KEY = 530;
+    KEYBOARD_RGB_PER_KEY = 546;
+    HEADSET_RGB_ZONAL = 1057;
+    SPEAKER_RGB_ZONAL = 2081;
+    GAMEBOARD_RGB_ZONAL = 4129;
+    MOUSEPAD_RGB_ZONAL = 8225;
+    MICROPHONE_RGB_ZONAL = 16417;
+  }
+
+}
+
+message Zone {
+  enum Type {
+    ZONE_INVALID = 0;
+    ZONE_ALL = 1;
+    ZONE_PRIMARY = 2;
+    ZONE_BRANDING = 4;
+    ZONE_ONE = 8;
+    ZONE_TWO = 16;
+    ZONE_THREE = 32;
+    ZONE_FOUR = 64;
+    ZONE_FIVE = 128;
+    ZONE_SIX = 256;
+    ZONE_SEVEN = 512;
+    ZONE_LEFT_SIDE = 1024;
+    ZONE_RIGHT_SIDE = 2048;
+    ZONE_COMBINED = 5632;
+  }
+
+}
+
+message PerKey {
+  enum Type {
+    PERKEY_INVALID = 0;
+    PERKEY_KEYBOARD = 1;
+    PERKEY_CONSUMER = 2;
+    PERKEY_GKEY = 4;
+    PERKEY_GENERIC = 8;
+    PERKEY_BRANDING = 16;
+    PERKEY_INDICATOR = 32;
+    PERKEY_COSMETIC = 64;
+  }
+
+}
+
+message Persistence {
+  bool zone_effects = 1;
+  bool zone_custom = 2;
+  bool per_key_fixed = 3;
+  uint32 per_key_custom = 4;
+}
+
+message Slots {
+  message Info {
+    message CodeMap {
+      message ColorCodeMapEntry {
+        uint32 key = 1;
+        .logi.protocol.util.Color value = 2;
+      }
+
+      repeated .logi.protocol.lighting_support.Slots.Info.CodeMap.ColorCodeMapEntry color_code_map = 1;
+    }
+
+    oneof type {
+      .logi.protocol.util.Color zone_color = 1;
+      .logi.protocol.lighting_support.Slots.Info.CodeMap per_key_map = 2;
+    }
+  }
+
+  message State {
+    message DeviceStatesEntry {
+      string key = 1;
+      .logi.protocol.lighting_support.Slots value = 2;
+    }
+
+    repeated .logi.protocol.lighting_support.Slots.State.DeviceStatesEntry device_states = 1;
+    .logi.protocol.util.Time time = 2;
+  }
+
+  message InfoMapEntry {
+    string key = 1;
+    .logi.protocol.lighting_support.Slots.Info value = 2;
+  }
+
+  repeated .logi.protocol.lighting_support.Slots.InfoMapEntry info_map = 1;
+  bool persistent = 2;
+}
+
+message Slot {
+  .logi.protocol.lighting_support.Lighting.Type lighting_type = 1;
+  uint32 slot_code = 4;
+  oneof slot_type {
+    .logi.protocol.lighting_support.PerKey.Type per_key_type = 2;
+    .logi.protocol.lighting_support.Zone.Type zone_type = 3;
+  }
+}
+

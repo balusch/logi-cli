@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package logi.protocol.presentation_timers;
+
+message DefaultsTimers {
+  string default_timer_card_id = 1;
+  bool supports_clock = 2;
+}
+
+message Alert {
+  bool is_alert_enabled = 2;
+  int64 alert_time = 3;
+}
+
+message Timer {
+  .logi.protocol.presentation_timers.Type timer_type = 1;
+  int64 main_alert = 2;
+  repeated .logi.protocol.presentation_timers.Alert additional_alerts = 3;
+}
+
+message TimerSettings {
+  bool is_enabled = 1;
+  .logi.protocol.presentation_timers.Type selected_timer = 2;
+  bool supports_clock = 3;
+  repeated .logi.protocol.presentation_timers.Timer timers = 4;
+}
+
+message TimerStatus {
+  bool is_timer_running = 1;
+}
+
+message DeviceTimerSettings {
+  string device_id = 1;
+  .logi.protocol.presentation_timers.TimerSettings device_timer_settings = 2;
+}
+
+message TimerVibrationStart {
+  string device_id = 1;
+  bool vibration_start = 2;
+  bool is_timer_interrupt = 3;
+}
+
+enum Type {
+  none = 0;
+  clock = 1;
+  min15 = 2;
+  min30 = 3;
+  min60 = 4;
+  custom = 5;
+}
+

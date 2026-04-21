@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package logi.protocol.test_gestures;
+
+message GestureSettings {
+  message FloatSetting {
+    float min = 1;
+    float max = 2;
+    float value = 3;
+  }
+
+  message ScrollSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+    bool smooth = 2;
+    uint32 wheel_multiplier = 3;
+    bool ratchet = 4;
+    float disturbance_timeout = 5;
+    float wheel_stop_time = 6;
+  }
+
+  message ZoomSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+    float multiplier = 2;
+    bool acceleration = 3;
+    bool filtering = 4;
+  }
+
+  message RotateSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+  }
+
+  message DesktopSwipeSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+  }
+
+  message PagesSwipeSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+  }
+
+  message FreePanSettings {
+    .logi.protocol.test_gestures.GestureSettings.FloatSetting speed = 1;
+  }
+
+  .logi.protocol.test_gestures.GestureSettings.ScrollSettings scroll_settings = 1;
+  .logi.protocol.test_gestures.GestureSettings.ZoomSettings zoom_settings = 2;
+  .logi.protocol.test_gestures.GestureSettings.RotateSettings rotate_settings = 3;
+  .logi.protocol.test_gestures.GestureSettings.DesktopSwipeSettings desktop_swipe_settings = 4;
+  .logi.protocol.test_gestures.GestureSettings.PagesSwipeSettings pages_swipe_settings = 5;
+  .logi.protocol.test_gestures.GestureSettings.FreePanSettings free_pan_settings = 6;
+}
+
+message Gesture {
+  message Scroll {
+    int32 deltaH = 1;
+    int32 deltaV = 2;
+    int32 period_count = 3;
+  }
+
+  message Zoom {
+    int32 dx = 1;
+    .logi.protocol.test_gestures.Gesture.GestureState state = 2;
+  }
+
+  message ZoomAction {
+    bool in_or_out = 1;
+    bool pressed = 2;
+    bool repeat = 3;
+  }
+
+  message Rotate {
+    int32 dx = 1;
+    .logi.protocol.test_gestures.Gesture.GestureState state = 2;
+  }
+
+  message DesktopSwipe {
+    int32 dx = 1;
+    .logi.protocol.test_gestures.Gesture.GestureState state = 2;
+  }
+
+  message PagesSwipe {
+    int32 dx = 1;
+    .logi.protocol.test_gestures.Gesture.GestureState state = 2;
+    bool navigation = 3;
+  }
+
+  message FreePan {
+    int32 dx = 1;
+    int32 dy = 2;
+    .logi.protocol.test_gestures.Gesture.GestureState state = 3;
+  }
+
+  message BackForward {
+    bool back = 1;
+  }
+
+  message ScrollLeftRight {
+    bool left = 1;
+  }
+
+  enum GestureState {
+    GESTURE_UNKNOWN = 0;
+    GESTURE_START = 1;
+    GESTURE_CONTINUE = 2;
+    GESTURE_STOP = 3;
+  }
+
+  enum Action {
+    UNKNOWN = 0;
+    SCROLL = 1;
+  }
+
+  oneof GestureMessages {
+    .logi.protocol.test_gestures.Gesture.Scroll scroll = 1;
+    .logi.protocol.test_gestures.Gesture.Zoom zoom = 2;
+    .logi.protocol.test_gestures.Gesture.ZoomAction zoom_action = 3;
+    .logi.protocol.test_gestures.Gesture.Rotate rotate = 4;
+    .logi.protocol.test_gestures.Gesture.DesktopSwipe desktop_swipe = 5;
+    .logi.protocol.test_gestures.Gesture.PagesSwipe pages_swipe = 6;
+    .logi.protocol.test_gestures.Gesture.FreePan free_pan = 7;
+    .logi.protocol.test_gestures.Gesture.BackForward back_forward = 8;
+    .logi.protocol.test_gestures.Gesture.ScrollLeftRight scroll_left_right = 9;
+  }
+}
+

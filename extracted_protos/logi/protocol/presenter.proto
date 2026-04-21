@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package logi.protocol.presenter;
+
+message Settings {
+  int32 capabilities = 1;
+  bool time_alert = 2;
+  bool battery_alert = 3;
+  bool connection_alert = 4;
+  int32 vibration_intensity = 5;
+}
+
+message VibrationInfo {
+  int32 duration = 1;
+  int32 intensity = 2;
+  bool presentation_alert = 3;
+  string device_id = 4;
+}
+
+message PresenterSettingsBroadcast {
+  .logi.protocol.presenter.Settings settings = 1;
+  string presenter_settings_slot_prefix = 2;
+}
+

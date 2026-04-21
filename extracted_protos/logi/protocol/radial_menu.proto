@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package logi.protocol.radial_menu;
+
+message ShowMenu {
+  enum ButtonState {
+    PRESS = 0;
+    RELEASE = 1;
+  }
+
+  .logi.protocol.radial_menu.ShowMenu.ButtonState state = 1;
+  string slot_id = 2;
+  string button_name = 3;
+}
+
+message ResizeRequest {
+  uint32 width = 1;
+  uint32 height = 2;
+}
+
+message RadialMenuEvent {
+  .logi.protocol.radial_menu.RadialMenuEventType event_type = 1;
+}
+
+enum RadialMenuEventType {
+  INVALID = 0;
+  SHOWN = 1;
+  DISMISSED = 2;
+  ACTION_EXECUTED = 3;
+  HOVERED = 4;
+  ANALOG_VALUE_LIMIT_REACHED = 5;
+}
+

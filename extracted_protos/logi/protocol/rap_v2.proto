@@ -1,0 +1,99 @@
+syntax = "proto3";
+
+package logi.protocol.rap_v2;
+
+import "logi/protocol/devices.proto";
+import "logi/protocol/profiles_v2.proto";
+
+message RacAnnounceState {
+  bool rac_exists_and_broadcasted = 1;
+}
+
+message DeviceSlotPrefixesList {
+  repeated string slot_prefixes = 1;
+}
+
+message CategoryInfo {
+  string id = 1;
+  string name = 2;
+  string icon = 3;
+}
+
+message RacResult {
+  message Action {
+    string card_id = 1;
+    repeated string slot_ids = 2;
+  }
+
+  message Category {
+    .logi.protocol.rap_v2.CategoryInfo category = 1;
+    repeated .logi.protocol.rap_v2.RacResult.Action actions = 2;
+  }
+
+  message PredefinedProfile {
+    string predefined_profile_id = 1;
+    string app_id = 2;
+    bool primary = 3;
+    string name = 4;
+    string plugin_id = 5;
+    repeated .logi.protocol.rap_v2.RacResult.Category categories_actions_list = 10;
+  }
+
+  repeated .logi.protocol.profiles_v2.Card cards = 1;
+  repeated .logi.protocol.rap_v2.RacResult.PredefinedProfile profiles_list = 2;
+  repeated string known_device_prefixes = 3;
+}
+
+message PredefinedProfile {
+  message Default {
+    string slot_id = 1;
+    repeated string slot_ids = 2;
+    repeated string tags = 5;
+    oneof card {
+      string card_id = 3;
+      .logi.protocol.profiles_v2.Card card_data = 4;
+    }
+  }
+
+  message Action {
+    string slot_id = 1;
+    repeated string slot_ids = 2;
+    repeated string card_ids = 3;
+  }
+
+  message Category {
+    .logi.protocol.rap_v2.CategoryInfo category = 1;
+    repeated .logi.protocol.rap_v2.PredefinedProfile.Action actions = 2;
+  }
+
+  string application_id = 1;
+  string predefined_profile_id = 2;
+  bool primary = 3;
+  string name = 4;
+  string plugin_id = 5;
+  repeated .logi.protocol.rap_v2.PredefinedProfile.Default defaults = 10;
+  repeated .logi.protocol.rap_v2.PredefinedProfile.Category categories = 20;
+}
+
+message CardList {
+  repeated .logi.protocol.profiles_v2.Card cards = 1;
+}
+
+message AppCardList {
+  string application_id = 1;
+  repeated .logi.protocol.profiles_v2.Card cards = 2;
+}
+
+message SupportedAppsRequest {
+  string slot_prefix = 1;
+}
+
+message PluginsAnnouncement {
+  message PluginsEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.CardCollection value = 2;
+  }
+
+  repeated .logi.protocol.rap_v2.PluginsAnnouncement.PluginsEntry plugins = 1;
+}
+

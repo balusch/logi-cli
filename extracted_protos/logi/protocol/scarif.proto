@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package logi.protocol.scarif;
+
+message Status {
+  bool enabled = 1;
+  bool needs_updating = 2;
+  bool user_prompted = 3;
+  string version_number = 4;
+}
+
+message Event {
+  enum Category {
+    INVALID = 0;
+    APP = 1;
+    CONFIG = 2;
+    DEVICE = 3;
+    SETUP = 4;
+    UI = 5;
+    PII = 6;
+    REPORT = 7;
+    USAGE = 8;
+    RECOMMENDATION = 9;
+  }
+
+  .logi.protocol.scarif.Event.Category category = 1;
+  string id = 2;
+  string data = 3;
+}
+
+message MinMaxUint32 {
+  uint32 min_value = 1;
+  uint32 max_value = 2;
+}
+
+message EventRequest {
+  uint32 maximum_request_size_bytes = 1;
+  uint32 submission_interval_minutes = 2;
+  .logi.protocol.scarif.MinMaxUint32 submission_interval_delta_minutes = 3;
+  uint32 maximum_events_per_request = 4;
+}
+
+message Config {
+  enum ServerConfigurationType {
+    INVALID = 0;
+    PROD = 1;
+    STAGE = 2;
+  }
+
+  .logi.protocol.scarif.EventRequest event_request = 1;
+  .logi.protocol.scarif.Testing testing = 2;
+  optional .logi.protocol.scarif.Config.ServerConfigurationType server_config_type = 3;
+}
+
+message Settings {
+  bool enabled = 1;
+  bool needs_updating = 2;
+  bool user_prompted = 3;
+  string version_number = 4;
+  .logi.protocol.scarif.Config config = 5;
+}
+
+message Telemetry {
+  message SubmissionInterval {
+    uint64 last_timer_reset = 1;
+    uint64 next_timer_reset = 2;
+  }
+
+  message JobInformation {
+    string id = 1;
+    string name = 2;
+    string reason = 3;
+    uint32 total_events_size = 4;
+    uint32 number_events = 5;
+  }
+
+  .logi.protocol.scarif.Telemetry.SubmissionInterval submission_interval = 1;
+  .logi.protocol.scarif.Telemetry.JobInformation finished_job = 2;
+}
+
+message Testing {
+  bool archive_successful_requests = 1;
+  int32 indent_json = 2;
+  uint32 delay_requests_msecs = 3;
+  string job_name = 4;
+}
+
+message Info {
+  bool enabled = 1;
+  string version_number = 2;
+  string app_id = 3;
+  string app_version = 4;
+  string os_name = 5;
+  string os_version = 6;
+  string user_id = 7;
+  string host_id = 8;
+  string server_address = 9;
+  string storage_path = 10;
+  .logi.protocol.scarif.Telemetry telemetry = 11;
+  uint32 os_bit = 12;
+  string system_lang = 13;
+  string app_lang = 14;
+  string manufacturer = 15;
+  string model = 16;
+}
+
+message BroadcastedEvent {
+  message AnalyticEventAdded {
+    message EventData {
+      message BatchEntry {
+        string key = 1;
+        string value = 2;
+      }
+
+      message EventEntry {
+        string key = 1;
+        string value = 2;
+      }
+
+      repeated .logi.protocol.scarif.BroadcastedEvent.AnalyticEventAdded.EventData.BatchEntry batch = 1;
+      repeated .logi.protocol.scarif.BroadcastedEvent.AnalyticEventAdded.EventData.EventEntry event = 2;
+    }
+
+    string group_id = 1;
+    string event_id = 2;
+    .logi.protocol.scarif.BroadcastedEvent.AnalyticEventAdded.EventData event_data = 3;
+    bool saved = 4;
+    bool added = 5;
+    string message = 6;
+  }
+
+  message BatchEventsSubmitted {
+    message ErrorDetails {
+      message EventEntry {
+        string key = 1;
+        string value = 2;
+      }
+
+      string details = 1;
+      string error = 2;
+      repeated .logi.protocol.scarif.BroadcastedEvent.BatchEventsSubmitted.ErrorDetails.EventEntry event = 3;
+    }
+
+    string job_id = 1;
+    string group_id = 2;
+    repeated string discarded_event_ids = 3;
+    repeated .logi.protocol.scarif.BroadcastedEvent.BatchEventsSubmitted.ErrorDetails errors = 4;
+  }
+
+  message BatchEventsDeleted {
+    message FailureInfo {
+      string event_id = 1;
+      string file_path = 2;
+      string reason = 3;
+    }
+
+    message SuccessInfo {
+      string event_id = 1;
+      string file_path = 2;
+    }
+
+    string job_id = 1;
+    string group_id = 2;
+    repeated .logi.protocol.scarif.BroadcastedEvent.BatchEventsDeleted.FailureInfo failures = 3;
+    repeated .logi.protocol.scarif.BroadcastedEvent.BatchEventsDeleted.SuccessInfo successes = 4;
+  }
+
+  message BatchEventsQueued {
+    string job_id = 1;
+    string group_id = 2;
+    repeated string event_ids = 3;
+  }
+
+  enum Type {
+    UNKNOWN = 0;
+    ANALYTIC_EVENT_ADDED = 1;
+    BATCH_EVENTS_SUBMITTED = 2;
+    BATCH_EVENTS_DELETED = 3;
+    BATCH_EVENTS_QUEUED = 4;
+  }
+
+  .logi.protocol.scarif.BroadcastedEvent.Type event_type = 1;
+  .logi.protocol.scarif.BroadcastedEvent.AnalyticEventAdded analytic_event_added = 2;
+  .logi.protocol.scarif.BroadcastedEvent.BatchEventsSubmitted batch_events_submitted = 3;
+  .logi.protocol.scarif.BroadcastedEvent.BatchEventsDeleted batch_events_deleted = 4;
+  .logi.protocol.scarif.BroadcastedEvent.BatchEventsQueued batch_events_queued = 5;
+}
+

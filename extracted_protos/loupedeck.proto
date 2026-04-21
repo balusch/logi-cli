@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package logi.protocol.loupedeck;
+
+message Action {
+  message List {
+    repeated .logi.protocol.loupedeck.Action actions = 1;
+  }
+
+  enum Type {
+    INVALID = 0;
+    GENERAL = 1;
+    MOUSE = 2;
+    LIGHTING = 3;
+    AUDIO = 4;
+    MICROPHONE = 5;
+    BLUEVOICE_PRESET = 6;
+    BLUEVOICE_EFFECT = 7;
+    MICROPHONE_AUDIO_SAMPLE = 8;
+    SMART_ACTION = 9;
+  }
+
+  enum MacroState {
+    ACTIVE = 0;
+    INACTIVE_DRAFT = 1;
+    INACTIVE_MANUALLY = 2;
+  }
+
+  string friendly_name = 1;
+  string macro_id = 2;
+  .logi.protocol.loupedeck.Action.Type action_type = 4;
+  optional string description = 3;
+  optional string device_id = 5;
+  optional .logi.protocol.loupedeck.Action.MacroState macro_state = 6;
+}
+
+message LoupedeckDevice {
+  message List {
+    repeated .logi.protocol.loupedeck.LoupedeckDevice loupedeck_devices = 1;
+  }
+
+  enum Type {
+    INVALID_TYPE = 0;
+    KEYBOARD = 1;
+    MOUSE = 2;
+    HEADSET = 3;
+    STEERING_WHEEL = 4;
+    PEDALS = 5;
+    HID_DEVICE = 6;
+    CHARGE_PAD = 7;
+    SPEAKER = 8;
+    CAMERA = 9;
+    MICROPHONE = 10;
+    ILLUMINATION_LIGHT = 11;
+    EARBUDS = 12;
+    ADAPTER = 13;
+    RECEIVER = 14;
+    NUMPAD = 15;
+    REMOTE = 16;
+    TOUCHPAD = 17;
+    TRACKBALL = 18;
+    VIRTUAL_DEVICE = 19;
+    CONTEXTUAL_KEYS = 20;
+    DIAL = 21;
+  }
+
+  string name = 1;
+  string uuid = 2;
+  .logi.protocol.loupedeck.LoupedeckDevice.Type device_type = 3;
+  .logi.protocol.loupedeck.EndpointPlatform platform = 4;
+}
+
+message UserInfo {
+  bool logged_in = 1;
+}
+
+enum EndpointPlatform {
+  INVALID = 0;
+  GHUB = 1;
+  OPTIONS_PLUS = 2;
+}
+

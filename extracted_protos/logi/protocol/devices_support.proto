@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package logi.protocol.devices_support;
+
+import "logi/protocol/devices.proto";
+
+message Device {
+  message ComboDevice {
+    string model_id = 1;
+    bool consider_for_onboarding = 2;
+  }
+
+  message Support {
+    string model_id = 1;
+    string display_name = 2;
+    string extended_display_name = 3;
+    string slot_prefix = 4;
+    .logi.protocol.devices.Device.Type type = 5;
+    string depot = 6;
+    string depot_prefix = 7;
+    .logi.protocol.devices.Capabilities capabilities = 8;
+    string thumbnail = 9;
+    string dfu_depot = 10;
+    repeated .logi.protocol.devices_support.Device.Mode modes = 11;
+    .logi.protocol.devices.Driver driver = 12;
+    string hotspot_color = 13;
+    bool hide_easy_switch_connection_type = 14;
+    bool is_predefined_profiles_enabled = 30;
+    repeated string supported_apps = 31;
+    string support_page_id = 35;
+    bool use_display_name_from_fw = 36;
+    bool left_handed = 37;
+    bool vertical = 38;
+    bool inverted = 39;
+    string string_package = 41;
+    bool business = 42;
+    repeated .logi.protocol.devices_support.Device.ComboDevice combo_devices = 43;
+    bool disable_fw_update = 44;
+  }
+
+  message Model {
+    message List {
+      repeated .logi.protocol.devices_support.Device.Model devices = 1;
+    }
+
+    string model_id = 1;
+    string slot_prefix = 2;
+    string display_name = 3;
+    string extended_display_name = 4;
+    .logi.protocol.devices.Device.Type type = 5;
+    string thumbnail = 6;
+    string hotspot_color = 7;
+    bool hide_easy_switch_connection_type = 8;
+  }
+
+  message Derivative {
+    uint32 extended_model = 1;
+    string model_id = 2;
+    string display_name = 3;
+    string extended_display_name = 4;
+    string thumbnail = 5;
+    .logi.protocol.devices.Capabilities capabilities = 6;
+    string support_page_id = 7;
+    bool use_display_name_from_fw = 8;
+    string hotspot_color = 9;
+    bool left_handed = 10;
+    bool vertical = 11;
+    bool inverted = 12;
+    repeated .logi.protocol.devices_support.Device.ComboDevice combo_devices = 13;
+  }
+
+  message Interface {
+    .logi.protocol.devices.Device.Interface.Type type = 1;
+    string id = 2;
+    uint32 extended_model = 3;
+    repeated .logi.protocol.devices_support.Device.Derivative derivatives = 7;
+    bool is_optional = 8;
+  }
+
+  message Mode {
+    repeated .logi.protocol.devices_support.Device.Interface interfaces = 1;
+  }
+
+}
+
+message Devices {
+  repeated .logi.protocol.devices_support.Device.Support devices = 1;
+}
+
+message OptionsDevice {
+  string model_id = 1;
+  string display_name = 2;
+  .logi.protocol.devices.Device.Type type = 3;
+  string thumbnail = 4;
+  bool win_support = 5;
+  bool mac_support = 6;
+  string hotspot_color = 7;
+  bool hide_easy_switch_connection_type = 8;
+}
+
+message OptionsDevices {
+  repeated .logi.protocol.devices_support.OptionsDevice devices = 1;
+}
+
+message GuruDevice {
+  string model_id = 1;
+  string display_name = 2;
+  .logi.protocol.devices.Device.Type type = 3;
+  string thumbnail = 4;
+}
+
+message GuruDevices {
+  repeated .logi.protocol.devices_support.GuruDevice devices = 1;
+}
+
+enum Adaptor {
+  INVALID = 0;
+  TELEPHONY = 1;
+  VENDOR = 2;
+}
+

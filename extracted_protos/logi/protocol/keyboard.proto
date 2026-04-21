@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+package logi.protocol.keyboard;
+
+message KeyboardSettings {
+  bool keep_keyboard_in_os_layout = 1;
+}
+

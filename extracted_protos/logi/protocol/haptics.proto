@@ -1,0 +1,233 @@
+syntax = "proto3";
+
+package logi.protocol.haptics;
+
+message HapticEvent {
+  string event_source_name = 1;
+  string event_name = 2;
+}
+
+message HapticEventSourceSetting {
+  bool is_haptics_enabled = 1;
+}
+
+message HapticFeedbackLevel {
+  string level_name = 1;
+  uint32 value = 2;
+}
+
+message HapticWaveForm {
+  string name = 1;
+  uint32 id = 2;
+}
+
+message BreathingExercises {
+  uint32 exercise_id = 1;
+  uint32 waveform_id = 2;
+  uint32 no_of_cycles = 3;
+}
+
+message HapticSettings {
+  message EventSourceSettingsEntry {
+    string key = 1;
+    .logi.protocol.haptics.HapticEventSourceSetting value = 2;
+  }
+
+  bool is_global_haptics_enabled = 1;
+  repeated .logi.protocol.haptics.HapticSettings.EventSourceSettingsEntry event_source_settings = 2;
+  uint32 haptic_feedback_level = 3;
+  bool is_power_save_enabled = 4;
+}
+
+message HapticCapabilities {
+  message SupportedWaveformsEntry {
+    string key = 1;
+    .logi.protocol.haptics.HapticWaveForm value = 2;
+  }
+
+  bool power_save_capability = 1;
+  uint32 default_haptic_feedback_level = 2;
+  .logi.protocol.haptics.HapticFeedbackLevelFormat haptic_levels_format = 3;
+  repeated .logi.protocol.haptics.HapticFeedbackLevel supported_levels = 4;
+  repeated .logi.protocol.haptics.HapticCapabilities.SupportedWaveformsEntry supported_waveforms = 5;
+  bool stop_waveform_capability = 6;
+  bool get_playing_waveform_capability = 7;
+  bool waveform_info_capability = 8;
+  repeated .logi.protocol.haptics.BreathingExercises breathing_exercises = 9;
+}
+
+message Haptics {
+  message HapticConfig {
+    bool is_haptics_enabled = 1;
+    bool is_power_save_enabled = 2;
+    uint32 current_haptic_level = 3;
+  }
+
+  message HapticProperties {
+    bool is_timer_enabled = 1;
+  }
+
+  message HapticPropertiesBroadcast {
+    .logi.protocol.haptics.Haptics.HapticProperties properties = 1;
+    string slot_prefix = 2;
+  }
+
+  message HapticStatusResponse {
+    .logi.protocol.haptics.Haptics.HapticStatus haptic_status = 1;
+  }
+
+  message PlayWaveFormRequest {
+    uint32 waveform_id = 1;
+    bool enable_waveform_info_event = 2;
+  }
+
+  message PlayWaveFormResponse {
+    uint32 waveform_id = 1;
+    .logi.protocol.haptics.Haptics.PlayWaveFormStatus status = 2;
+  }
+
+  message StopWaveformResponse {
+    .logi.protocol.haptics.Haptics.WaveformRunningStatus waveform_running_status = 1;
+  }
+
+  message GetPlayingWaveformResponse {
+    .logi.protocol.haptics.Haptics.WaveformId waveform_id = 1;
+    .logi.protocol.haptics.Haptics.WaveformRunningStatus waveform_running_status = 2;
+  }
+
+  message WaveformInfoEventResponse {
+    .logi.protocol.haptics.Haptics.WaveformId waveform_id = 1;
+    .logi.protocol.haptics.Haptics.WaveformRunningStatus waveform_running_status = 2;
+  }
+
+  message PlayBreathingExercise {
+    int32 exercise_id = 1;
+    .logi.protocol.haptics.Haptics.BreathingExerciseTrigger trigger = 2;
+  }
+
+  message HapticEventSource {
+    string event_source_name = 1;
+    string event_source_display_name = 2;
+    string event_source_description = 3;
+    string icon = 4;
+    string icon_type = 5;
+    bool internal = 6;
+    bool disabled_by_default = 7;
+  }
+
+  message HapticEventSources {
+    message HapticEventSourcesEntry {
+      string key = 1;
+      .logi.protocol.haptics.Haptics.HapticEventSource value = 2;
+    }
+
+    repeated .logi.protocol.haptics.Haptics.HapticEventSources.HapticEventSourcesEntry haptic_event_sources = 1;
+  }
+
+  enum HapticStatus {
+    HAPTIC_ENABLED = 0;
+    HAPTIC_DISABLED = 1;
+  }
+
+  enum PlayWaveFormStatus {
+    RECEIVED_AND_STARTED_PLAYING = 0;
+    RECEIVED_AND_IGNORED = 1;
+  }
+
+  enum WaveformId {
+    SHARP_STATE_CHANGE = 0;
+    DAMP_STATE_CHANGE = 1;
+    SHARP_COLLISION = 2;
+    DAMP_COLLISION = 3;
+    SUBTLE_COLLISION = 4;
+    HAPPY_ALERT = 5;
+    ANGRY_ALERT = 6;
+    COMPLETED = 7;
+    SQUARE = 8;
+    WAVE = 9;
+    FIREWORK = 10;
+    MAD = 11;
+    KNOCK = 12;
+    JINGLE = 13;
+    RINGING = 14;
+    SIMPLE_BREATHING = 15;
+    BOX_BREATHING = 16;
+    BELLY_BREATHING = 17;
+    TIMER = 18;
+    START_END_BREATHING_SIGNAL = 19;
+    NONE = 255;
+  }
+
+  enum BreathingExerciseTrigger {
+    DEVICE = 0;
+    UI = 1;
+  }
+
+  enum WaveformRunningStatus {
+    NO_WAVEFORM_PLAYING = 0;
+    SOFTWARE_WAVEFORM_PLAYING = 1;
+    DEVICE_WAVEFORM_PLAYING = 2;
+    UNKNOWN_ERROR_OR_STATUS = 255;
+  }
+
+}
+
+message Config {
+  message HapticEvent {
+    bool unsupported = 1;
+    uint32 waveform_id = 2;
+  }
+
+  message HapticEventSource {
+    message SupportedEventsEntry {
+      string key = 1;
+      .logi.protocol.haptics.Config.HapticEvent value = 2;
+    }
+
+    bool disabled_by_default = 1;
+    bool unsupported_on_win = 2;
+    bool unsupported_on_mac = 3;
+    repeated .logi.protocol.haptics.Config.HapticEventSource.SupportedEventsEntry supported_events = 4;
+  }
+
+  message BlacklistedEvent {
+    string event_source_name = 1;
+    string event_name = 2;
+  }
+
+  message HapticDeviceConfig {
+    message SupportedEventSourcesEntry {
+      string key = 1;
+      .logi.protocol.haptics.Config.HapticEventSource value = 2;
+    }
+
+    message HapticWaveformsEntry {
+      string key = 1;
+      uint32 value = 2;
+    }
+
+    repeated .logi.protocol.haptics.Config.HapticDeviceConfig.SupportedEventSourcesEntry supported_event_sources = 1;
+    repeated .logi.protocol.haptics.Config.HapticDeviceConfig.HapticWaveformsEntry haptic_waveforms = 2;
+    repeated .logi.protocol.haptics.Config.BlacklistedEvent blacklisted_events = 3;
+    repeated string blacklisted_event_source_names = 4;
+    repeated string blacklisted_event_names = 5;
+    bool is_plugin_event_sources_supported = 6;
+  }
+
+}
+
+message TriggerWaveformExecute {
+  .logi.protocol.haptics.HapticWaveForm wave_form = 1;
+  bool execute = 2;
+}
+
+message TriggerWaveformInfo {
+  bool start_waveform = 1;
+  string device_id = 2;
+}
+
+enum HapticFeedbackLevelFormat {
+  AllLevels = 0;
+  SpecificLevels = 1;
+}
+

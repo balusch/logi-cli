@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package logi.protocol.survey;
+
+message Survey {
+  optional int32 star_rating = 1;
+  optional string feedback = 2;
+}
+

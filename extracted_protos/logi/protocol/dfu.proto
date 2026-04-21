@@ -1,0 +1,227 @@
+syntax = "proto3";
+
+package logi.protocol.dfu;
+
+message DfuStatus {
+  message Error_Info {
+    uint32 error_code = 1;
+    string error_name = 2;
+    string error_message = 3;
+    int32 dfu_state = 4;
+  }
+
+  enum Evt_Type {
+    INVALID_TYPE = 0;
+    DEVICEARRIVAL = 3;
+    DEVICEREMOVAL = 4;
+    ENUMERATIONCOMPLETE = 5;
+    DEVICECONNECT = 6;
+    DEVICEDISCONNECT = 7;
+    DEVICEFWCHANGED = 8;
+    DFUPROGRESS = 9;
+    DFUSTATUS = 10;
+    BDFUPROGRESS = 11;
+  }
+
+  enum Evt_Info {
+    INVALID_INFO = 0;
+    SUCCESS = 1;
+    INVALID_PARAMETER = 2;
+    INVALID_DEVICE = 3;
+    CALL_NOT_SUPPORTED = 4;
+    ERROR = 5;
+    NO_UPDATABLE_ENTITIES = 6;
+    DEVICE_ERROR = 7;
+    LOW_BATTERY = 8;
+    RESTART_DEVICE = 9;
+    RESTART_DEVICE_CANCELLED = 10;
+    RESTART_DEVICE_WITH_TIMEOUT = 11;
+    RESTART_RECEIVER_WITH_TIMEOUT = 12;
+    WAIT_FOR_BLE_BOOTLOAD_DEVICE = 13;
+    WAIT_FOR_DEVICE_BOOTLOADER_DIFFERENT_PID = 14;
+    WAIT_FOR_DEVICE_BOOTLOAD_DEVICE = 15;
+    NETWORK_CONNECTION_ISSUES = 16;
+    REACHING_SERVER_ISSUES = 17;
+    FIRMWARE_DOWNLOAD_ISSUES = 18;
+    FIRMWARE_SUCCESSFULLY_DOWNLOADED = 19;
+    FIRMWARE_NOT_AVAILABLE = 20;
+    AUTHENTICATION_ISSUES = 21;
+    FIRMWARE_DOWNLOAD_START = 22;
+    FIRMWARE_DOWNLOAD_SKIPPED = 23;
+    FIRMWARE_DOWNLOAD_FAILED = 24;
+    ERROR_OTHER_APP_UPDATING_DEVICE = 25;
+    DEVICE_HARD_RESET_REQUIRED_ERROR = 26;
+    FIRMWARE_DOWNLOAD_FAILED_DEVICE_REMOVED = 27;
+    FIRMWARE_DOWNLOAD_FAILED_PAYLOAD = 28;
+    UPD_INITIATED = 101;
+    UPD_SUCCEEDED = 102;
+    UPD_FAILED = 103;
+    UPD_WAIT_FOR_BLE_BOOTLOAD_DEVICE = 104;
+    UPD_ENTERED_BLE_BOOTLOADER = 105;
+    UPD_LOWER_SECURITY_LEVEL = 106;
+    UPD_ENTITY_START = 107;
+    UPD_ENTITY_SUCCESS = 108;
+    UPD_ENTITY_ERROR = 109;
+    UPD_FAILED_ENTITY_VERSION_MISMATCH = 110;
+    UPD_HARD_RESET_DEVICE_REQUIRED = 111;
+    UPD_VERIFY_UPDATED_FIRMWARE = 112;
+    UPD_BAD_MAGIC_STRING = 113;
+    UPD_FAILED_DEVICE_REMOVED = 114;
+    UPD_BOOTLOADER_CANCELLED = 115;
+    UPD_LAST_ENTITY = 199;
+    UPD_BDFU_INITIATED = 200;
+    UPD_BDFU_BLOCK_STARTED = 201;
+    UPD_BDFU_BLOCK_COMPLETED = 202;
+    UPD_BDFU_TRANSFER_PAUSED = 203;
+    UPD_BDFU_TRANSFER_RESUMED = 204;
+    UPD_BDFU_WAITING_FOR_IDLE = 205;
+    UPD_BDFU_FAILED = 206;
+    UPD_BDFU_DEVICE_DISCONNECTED = 207;
+    UPD_BDFU_COMPLETED = 208;
+    UPD_BDFU_RETRY = 210;
+    UPD_BDFU_ABORTED = 211;
+    DFU_CANCELED = 251;
+    STATE_IDLE = 301;
+    STATE_DOWNLOADING_FIRMWARE = 302;
+    STATE_STARTING_DFU = 303;
+    STATE_WAITING_FOR_USER_ACTION = 304;
+    STATE_RUNNING_DFU = 305;
+  }
+
+  enum FW_Type {
+    INVALID_FW_TYPE = 0;
+    DFU_FWTYPE_UNKNOWN = 1;
+    DFU_FWTYPE_MAIN_APPLICATION = 2;
+    DFU_FWTYPE_BOOTLOADER = 3;
+    DFU_FWTYPE_HARDWARE = 4;
+    DFU_FWTYPE_TOUCHPAD = 5;
+    DFU_FWTYPE_OPTICAL_SENSOR = 6;
+    DFU_FWTYPE_SOFT_DEVICE = 7;
+    DFU_FWTYPE_MAIN_APPLICATION_OF_COMPANION_MCU = 8;
+    DFU_FWTYPE_FACTORY_APPLICATION = 9;
+    DFU_RGB_CUSTOM_EFFECT = 10;
+    DFU_MOTOR_DRIVE = 11;
+    DFU_BOOTLOADER_OF_COMPANION_MCU = 12;
+    DFU_EMBEDDED_IMAGES = 13;
+  }
+
+  .logi.protocol.dfu.DfuStatus.Evt_Type evt_type = 1;
+  .logi.protocol.dfu.DfuStatus.Evt_Info evt_info = 2;
+  .logi.protocol.dfu.DfuStatus.FW_Type fw_type = 3;
+  float percent = 4;
+  .logi.protocol.dfu.DfuStatus.Error_Info error_info = 5;
+  int32 entity_index = 6;
+  .logi.protocol.dfu.BdfuState bdfu_state = 7;
+}
+
+message Progress {
+  float percent = 1;
+}
+
+message BDFUProgress {
+  float percent = 1;
+  uint32 attempt = 2;
+  .logi.protocol.dfu.BdfuState bdfu_state = 3;
+}
+
+message Finished {
+  enum Result {
+    INVALID_RESULT = 0;
+    SUCCESS = 1;
+    FAIL = 2;
+    FAIL_TIMEOUT = 3;
+    FAIL_LOW_BATTERY = 4;
+    CANCELED = 5;
+    DFU_FINISHED = 6;
+    REBOOTING = 7;
+    FAIL_NETWORK_CONNECTION = 8;
+    FAIL_TO_REACH_SERVER = 9;
+    FAIL_FIRMWARE_DOWNLOAD = 10;
+    FIRMWARE_SUCCESSFULLY_DOWNLOADED = 11;
+    FAIL_FIRMWARE_NOT_AVAILABLE = 12;
+    FAIL_OTHER_APP_UPDATING_DEVICE = 13;
+    FAIL_ENTITY_VERSION_MISMATCH = 14;
+    DEVICE_HARD_RESET_REQUIRED_ERROR = 15;
+    FAIL_DEVICE_REMOVED = 16;
+    FAIL_DOWNLOAD_PAYLOAD = 17;
+    BDFU_STARTED = 18;
+    BDFU_FAILED = 19;
+    BDFU_SUCCESS = 20;
+    FIRMWARE_DOWNLOAD_STARTED = 21;
+    BDFU_APPLY_PENDING = 22;
+    BDFU_DEVICE_DISCONNECTED = 23;
+    BDFU_RETRY = 24;
+  }
+
+  .logi.protocol.dfu.Finished.Result result = 1;
+  uint32 data = 2;
+  .logi.protocol.dfu.BdfuState bdfu_state = 3;
+}
+
+message Finished_Ext {
+  string id = 1;
+  string display_name = 2;
+  .logi.protocol.dfu.Finished.Result dfu_result = 3;
+  .logi.protocol.dfu.BdfuState bdfu_state = 4;
+}
+
+message RebootDevice {
+  enum Action {
+    INVALID_REBOOT_DEVICE_ACTION = 0;
+    POWER_OFF_ON = 1;
+    THREE_KEYS = 2;
+    THREE_BUTTONS = 3;
+    ON_SCREEN_CONFIRMATION_REQUIRED = 4;
+  }
+
+  .logi.protocol.dfu.RebootDevice.Action action = 1;
+  uint32 timeout = 2;
+}
+
+message Info {
+  bool require_fw_update = 1;
+  bool is_mandatory = 2;
+  .logi.protocol.dfu.DfuStatus.Evt_Info dfu_status = 3;
+  .logi.protocol.dfu.Finished.Result dfu_result = 4;
+  float dfu_progress = 5;
+  string eligible_version = 6;
+  string upcoming_release_notes = 7;
+  uint64 last_successful_update = 8;
+  bool require_soft_device_update = 9;
+  string last_successful_release_notes = 10;
+  .logi.protocol.dfu.BdfuState last_bdfu_state = 11;
+  uint64 last_bdfu_failed_time = 12;
+  uint32 last_bdfu_attempt = 13;
+  bool quiet_dfu = 14;
+}
+
+message LastUpdateCheck {
+  uint64 time = 1;
+  string fw_version = 2;
+}
+
+message LastDFUHelper {
+  string last_supported_dfu_feature = 1;
+}
+
+message UpdateCheckConfig {
+  reserved 2;
+  optional bool update_check_enabled = 1;
+  optional uint64 update_check_periodic_interval_secs = 3;
+  optional uint64 update_check_retry_interval_secs = 4;
+  optional bool auto_install_enabled = 5;
+}
+
+message FirmwareDownloadConfig {
+  optional bool firmware_download_enabled = 1;
+  optional string lu_server_host_override = 2;
+  optional string channel_override = 3;
+  optional string country_override = 4;
+}
+
+enum BdfuState {
+  DISABLED = 0;
+  NON_PRIORITY = 1;
+  PRIORITY = 2;
+}
+

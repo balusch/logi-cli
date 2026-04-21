@@ -1,0 +1,204 @@
+syntax = "proto3";
+
+package logi.protocol.firmware_lighting;
+
+import "logi/protocol/util.proto";
+import "logi/protocol/lighting_support.proto";
+
+message Zone {
+  .logi.protocol.lighting_support.Zone.Type zone_type = 1;
+  repeated .logi.protocol.firmware_lighting.Effect.Support supported_effects = 2;
+  .logi.protocol.util.Color default_color = 3;
+}
+
+message Effect {
+  message Support {
+    .logi.protocol.firmware_lighting.Effect.Id id = 1;
+    bool syncable = 2;
+    bool fixed_intensity = 3;
+  }
+
+  enum Id {
+    INVALID = 0;
+    OFF = 1;
+    FIXED = 2;
+    CYCLE = 3;
+    COLORWAVE = 4;
+    BREATHING = 5;
+    RIPPLE = 6;
+    CUSTOM = 7;
+    KITT = 8;
+    DECOMPOSITION = 9;
+  }
+
+  .logi.protocol.firmware_lighting.Effect.Id id = 1;
+  .logi.protocol.lighting_support.Zone.Type zone_type = 2;
+  bool persistent = 3;
+  oneof effect_type {
+    .logi.protocol.firmware_lighting.Fixed.Params fixed_params = 4;
+    .logi.protocol.firmware_lighting.Breathing.Params breathing_params = 5;
+    .logi.protocol.firmware_lighting.ColorCycle.Params cycle_params = 7;
+    .logi.protocol.firmware_lighting.ColorWave.Params colorwave_params = 8;
+    .logi.protocol.firmware_lighting.Ripple.Params ripple_params = 9;
+    .logi.protocol.firmware_lighting.Custom.Params custom_params = 10;
+    .logi.protocol.firmware_lighting.Kitt.Params kitt_params = 11;
+    .logi.protocol.firmware_lighting.Decomposition.Params decomposition_params = 12;
+  }
+}
+
+message Effects {
+  repeated .logi.protocol.firmware_lighting.Effect effects = 1;
+}
+
+message Power {
+  message Saving {
+    .logi.protocol.firmware_lighting.Effects firmware_effects = 1;
+    float brightness = 2;
+    .logi.protocol.util.Time inactivity = 3;
+    .logi.protocol.util.Time sleep = 4;
+  }
+
+}
+
+message Battery {
+  message Warning {
+    .logi.protocol.firmware_lighting.Battery.Effect effect = 1;
+  }
+
+  enum Effect {
+    BREATHING = 0;
+    BRANDING_BREATHING = 1;
+    PRIMARY_BREATHING = 2;
+    FIXED = 3;
+    OFF = 4;
+  }
+
+}
+
+message Fixed {
+  message Params {
+    .logi.protocol.util.Color color = 1;
+  }
+
+}
+
+message Breathing {
+  message Params {
+    .logi.protocol.util.Color color = 1;
+    uint32 period_in_ms = 2;
+    float intensity = 3;
+  }
+
+}
+
+message ColorCycle {
+  message Params {
+    uint32 period_in_ms = 1;
+    float intensity = 2;
+  }
+
+}
+
+message ColorWave {
+  message Params {
+    uint32 period_in_ms = 1;
+    .logi.protocol.firmware_lighting.ColorWave.Direction direction = 2;
+    float intensity = 3;
+  }
+
+  enum Direction {
+    INVALID = 0;
+    HORIZONTAL = 1;
+    VERTICAL = 2;
+    CENTER_OUT = 3;
+    INWARD = 4;
+    OUTWARD = 5;
+    REVERSE_HORIZONTAL = 6;
+    REVERSE_VERTICAL = 7;
+    CENTER_IN = 8;
+  }
+
+}
+
+message Ripple {
+  message Params {
+    .logi.protocol.util.Color color = 1;
+    uint32 period_in_ms = 2;
+  }
+
+}
+
+message Custom {
+  message Params {
+    uint32 slot = 1;
+    uint32 frame_rate = 2;
+    float intensity = 3;
+    string name = 4;
+    string software_id = 5;
+  }
+
+}
+
+message Kitt {
+  message Params {
+    .logi.protocol.util.Color color = 1;
+    uint32 overlap = 2;
+    uint32 period_in_ms = 3;
+    .logi.protocol.util.Color bg_color = 4;
+    float intensity = 5;
+  }
+
+}
+
+message Decomposition {
+  message Params {
+    uint32 period_in_ms = 1;
+    float intensity = 2;
+  }
+
+}
+
+message Sync {
+  bool enabled = 1;
+  repeated .logi.protocol.firmware_lighting.Effect effects = 2;
+}
+
+message Devio {
+  message Zone {
+    enum Type {
+      INVALID = 0;
+      PRIMARY = 1;
+      LOGO = 2;
+      LEFT_SIDE = 3;
+      RIGHT_SIDE = 4;
+      COMBINED = 5;
+      ZONAL_ONE = 6;
+      ZONAL_TWO = 7;
+      ZONAL_THREE = 8;
+      ZONAL_FOUR = 9;
+      ZONAL_FIVE = 10;
+      ZONAL_SIX = 11;
+      ZONAL_SEVEN = 12;
+      BATTERY = 13;
+      DPI = 14;
+      PROFILE = 15;
+      COSMETIC = 16;
+    }
+
+  }
+
+  message PerKey {
+    enum Type {
+      INVALID = 0;
+      HID_KEYBOARD = 1;
+      HID_CONSUMER = 2;
+      G_KEY = 3;
+      GENERIC_BUTTON = 4;
+      LOGO = 5;
+      KEYBOARD_OTHER = 6;
+    }
+
+  }
+
+}
+

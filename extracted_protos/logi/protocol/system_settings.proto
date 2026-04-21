@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package logi.protocol.system_settings;
+
+message OpenSettingsRequest {
+  .logi.protocol.system_settings.SettingsPage settings_page = 1;
+}
+
+message SystemSettings {
+  string country_region = 1;
+  bool is_haptics_supported = 2;
+}
+
+enum SettingsPage {
+  UNKNOWN_SETTINGS = 0;
+  WIN_HAPTICS_SETTINGS = 1;
+}
+

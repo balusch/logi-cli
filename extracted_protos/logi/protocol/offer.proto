@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package logi.protocol.offer_redemption;
+
+message Offer {
+  message TestData {
+    .logi.protocol.offer_redemption.Status status = 1;
+    int32 code = 2;
+  }
+
+  string id = 1;
+  string title = 2;
+  string summary = 3;
+  string description = 4;
+  string bannerUrl = 5;
+  string claimedOn = 6;
+  bool viewed = 7;
+  .logi.protocol.offer_redemption.OfferType type = 8;
+  string bundle_id = 9;
+  optional .logi.protocol.offer_redemption.Offer.TestData test_data = 10;
+}
+
+message OfferInfo {
+  string serial_number = 2;
+  string model_id = 3;
+  string ext_id = 4;
+  string locale = 5;
+  uint64 first_connect_time = 6;
+  uint64 last_successful_attempt = 7;
+  optional .logi.protocol.offer_redemption.Offer offer = 1;
+}
+
+message QueryCache {
+  repeated .logi.protocol.offer_redemption.OfferInfo entries = 1;
+}
+
+message OfferStatus {
+  string id = 1;
+  bool viewed = 2;
+  string bundle_id = 3;
+}
+
+message Offers {
+  repeated .logi.protocol.offer_redemption.Offer offers = 1;
+}
+
+message RedeemRequest {
+  message RedeemInfo {
+    string id = 1;
+    string bundle_id = 2;
+  }
+
+  repeated .logi.protocol.offer_redemption.RedeemRequest.RedeemInfo info = 1;
+}
+
+message ResultInfo {
+  string offer_id = 1;
+  int32 code = 2;
+  .logi.protocol.offer_redemption.Status status = 3;
+  string bundle_id = 4;
+}
+
+message Result {
+  repeated .logi.protocol.offer_redemption.ResultInfo info = 1;
+}
+
+message ViewedOffers {
+  repeated string bundle_ids = 1;
+}
+
+message TestDevice {
+  string model_id = 1;
+  uint32 extended_model_id = 2;
+  string device_serial_number = 3;
+  uint64 first_connect_time = 4;
+}
+
+message TestOffers {
+  message TestOffer {
+    .logi.protocol.offer_redemption.TestDevice device = 1;
+    .logi.protocol.offer_redemption.Offer offer = 2;
+  }
+
+  repeated .logi.protocol.offer_redemption.TestOffers.TestOffer offers = 1;
+}
+
+message PerplexityCode {
+  int32 id = 1;
+  string name = 2;
+  string title = 3;
+  string summary = 4;
+  string description = 5;
+  string code = 6;
+}
+
+enum OfferType {
+  GENERIC = 0;
+  CLAIMED = 1;
+  AVAILABLE = 2;
+}
+
+enum Status {
+  SUCCESS = 0;
+  CLIENT_ERROR = 1;
+  SERVER_ERROR = 2;
+}
+

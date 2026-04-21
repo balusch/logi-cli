@@ -1,0 +1,91 @@
+syntax = "proto3";
+
+package logi.protocol.rap;
+
+import "logi/protocol/profiles_v2.proto";
+
+message DataMap {
+  message DataEntry {
+    string key = 1;
+    .logi.protocol.rap.Data value = 2;
+  }
+
+  repeated .logi.protocol.rap.DataMap.DataEntry data = 1;
+}
+
+message DataMapOptional {
+  bool valid = 1;
+  .logi.protocol.rap.DataMap data = 2;
+}
+
+message DataMapSlotsForDevice {
+  .logi.protocol.rap.DataMapOptional availability = 1;
+  .logi.protocol.rap.DataMapOptional recommendation = 2;
+}
+
+message Data {
+  repeated .logi.protocol.rap.InfoList info_list = 1;
+}
+
+message InfoList {
+  string id = 1;
+  repeated string infos = 2;
+  repeated .logi.protocol.rap.ControlIdRecommendation control_id_recommendation = 3;
+}
+
+message ControlIdRecommendation {
+  string control_Id = 1;
+  repeated string predefined_Ids = 2;
+}
+
+message RACInfo {
+  string device_id = 1;
+}
+
+message RACContainer {
+  .logi.protocol.rap.RACList available_cards = 1;
+  .logi.protocol.rap.RACList recommended_cards = 2;
+}
+
+message RACList {
+  repeated .logi.protocol.rap.RAC rac_list = 1;
+}
+
+message RAC {
+  string app_id = 1;
+  repeated .logi.protocol.rap.SlotCardList slot_card_list = 2;
+}
+
+message SlotCardList {
+  string slot_id = 1;
+  repeated .logi.protocol.profiles_v2.Card cards = 2;
+  repeated .logi.protocol.profiles_v2.Card app_specific_cards = 3;
+  repeated .logi.protocol.profiles_v2.Card desktop_cards = 4;
+}
+
+message CardList {
+  repeated .logi.protocol.profiles_v2.Card cards = 1;
+}
+
+message SupportedApps {
+  message AppsEntry {
+    string key = 1;
+    .logi.protocol.rap.SupportedSlots value = 2;
+  }
+
+  repeated .logi.protocol.rap.SupportedApps.AppsEntry apps = 1;
+}
+
+message SupportedSlots {
+  message SlotsEntry {
+    string key = 1;
+    .logi.protocol.rap.SupportedCards value = 2;
+  }
+
+  repeated .logi.protocol.rap.SupportedSlots.SlotsEntry slots = 1;
+}
+
+message SupportedCards {
+  repeated string cards = 1;
+}
+

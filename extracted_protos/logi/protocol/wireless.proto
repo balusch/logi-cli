@@ -1,0 +1,110 @@
+syntax = "proto3";
+
+package logi.protocol.wireless;
+
+import "logi/protocol/firmware_lighting.proto";
+import "logi/protocol/util.proto";
+import "google/protobuf/timestamp.proto";
+
+message Wireless {
+  message ReportRate {
+    repeated uint32 rate_list = 1;
+    uint32 report_rate = 2;
+  }
+
+  enum State {
+    INVALID = 0;
+    DISCONNECTED = 1;
+    CONNECTED = 2;
+    WIRED = 3;
+  }
+
+  enum BusType {
+    UNKNOWN = 0;
+    USB = 1;
+    UNIIFYING = 2;
+    BLUETOOTH = 3;
+  }
+
+  .logi.protocol.wireless.Wireless.State state = 1;
+  .logi.protocol.wireless.Wireless.BusType bus_type = 2;
+}
+
+message Power {
+  message Consumption {
+    message Brightness {
+      bool supported = 1;
+      uint32 value = 2;
+    }
+
+    message Update {
+      .logi.protocol.firmware_lighting.Effects lighting = 1;
+      .logi.protocol.wireless.Power.Consumption.Brightness brightness = 2;
+      .logi.protocol.util.BoolValue dpi_lighting_off = 3;
+      .logi.protocol.util.Int report_rate = 4;
+      .logi.protocol.util.Number audio_gain = 5;
+    }
+
+    message Details {
+      float system = 1;
+      float report_rate = 2;
+      float lighting = 3;
+      float volume = 4;
+    }
+
+    float value = 1;
+    .logi.protocol.wireless.Power.Consumption.Details details = 2;
+  }
+
+}
+
+message Battery {
+  message Warning {
+    enum Level {
+      DEAD = 0;
+      CRITICAL = 15;
+      LOW = 30;
+      GOOD = 50;
+      GREAT = 90;
+      FULL = 100;
+    }
+
+    string device_id = 1;
+    float percentage = 2;
+    uint64 time = 3;
+    .logi.protocol.wireless.Battery.Warning.Level level = 4;
+  }
+
+  string device_id = 1;
+  float percentage = 2;
+  uint32 mileage = 3;
+  bool charging = 4;
+  .logi.protocol.wireless.Power.Consumption consumption = 5;
+  bool simple_battery = 6;
+  bool critical_level = 7;
+  .logi.protocol.wireless.Battery.Warning.Level level = 8;
+}
+
+message BatteryCache {
+  float percentage = 1;
+  .google.protobuf.Timestamp time = 2;
+  float millivolts = 3;
+  bool is_charging = 4;
+}
+
+message BatteryNotifyRule {
+  message DeviceState {
+    string serial_number = 1;
+    string model_id = 2;
+    .logi.protocol.wireless.Battery.Warning state = 3;
+    uint64 time = 4;
+    uint32 count = 5;
+  }
+
+  .logi.protocol.wireless.Battery.Warning.Level level = 1;
+  uint32 interval = 2;
+  uint32 count = 3;
+  uint32 keep = 4;
+  repeated .logi.protocol.wireless.BatteryNotifyRule.DeviceState states = 5;
+}
+

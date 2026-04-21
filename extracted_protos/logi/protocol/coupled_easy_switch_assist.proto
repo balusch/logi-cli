@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package logi.protocol.coupled_easy_switch_assist;
+
+import "logi/protocol/devices.proto";
+
+message CoupledSwitchCompatibleDevices {
+  message Device {
+    string device_id = 1;
+    string device_serial_number = 2;
+    bool linked = 3;
+    bool need_fw_update = 4;
+  }
+
+  bool toggle = 1;
+  bool lead_need_fw_update = 2;
+  repeated .logi.protocol.coupled_easy_switch_assist.CoupledSwitchCompatibleDevices.Device devices = 3;
+}
+
+message LinkDeviceInfo {
+  bool link = 1;
+  string follow_device_id = 2;
+  string lead_serial_number = 3;
+}
+
+message FollowDeviceCookieInfo {
+  bool link = 1;
+  bool coupled_switch_capable = 2;
+  string lead_hashed_serial_number = 3;
+}
+

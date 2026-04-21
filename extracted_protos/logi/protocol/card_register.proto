@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+package logi.protocol.card_register;
+
+import "google/protobuf/any.proto";
+import "logi/protocol/devices.proto";
+
+message CardRouteRegister {
+  string attribute = 1;
+  string route = 2;
+  string inner_card_path = 3;
+}
+
+message TaskExecute {
+  message InnerCardsEntry {
+    string key = 1;
+    .google.protobuf.Any value = 2;
+  }
+
+  .logi.protocol.devices.TriggerEvent trigger = 1;
+  repeated .logi.protocol.card_register.TaskExecute.InnerCardsEntry inner_cards = 2;
+}
+

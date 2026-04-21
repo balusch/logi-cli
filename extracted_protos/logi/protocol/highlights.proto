@@ -1,0 +1,96 @@
+syntax = "proto3";
+
+package logi.protocol.highlights;
+
+message CursorPosition {
+  int32 dx = 1;
+  int32 dy = 2;
+}
+
+message Vignette {
+  float diameter = 1;
+  uint32 color = 2;
+  uint32 slider_position = 3;
+  bool freeze = 4;
+  bool cursor_control = 5;
+}
+
+message Magnifier {
+  float diameter = 1;
+  uint32 color = 2;
+  uint32 slider_position = 3;
+  bool freeze = 4;
+  bool cursor_control = 5;
+}
+
+message Laser {
+  float diameter = 1;
+  uint32 color = 2;
+  uint32 slider_position = 3;
+  bool freeze = 4;
+  bool cursor_control = 5;
+}
+
+message Rectangle {
+  uint32 color = 2;
+  uint32 slider_position = 3;
+  bool freeze = 4;
+  bool cursor_control = 5;
+}
+
+message Annotation {
+  uint32 color = 2;
+  uint32 slider_position = 3;
+  bool freeze = 4;
+  bool cursor_control = 5;
+}
+
+message CursorControl {
+  bool is_cursor_following = 1;
+  bool is_cursor_centering = 2;
+}
+
+message HighlightsSettings {
+  .logi.protocol.highlights.EffectType effect_type = 1;
+  .logi.protocol.highlights.Vignette vignette = 2;
+  .logi.protocol.highlights.Magnifier magnifier = 3;
+  .logi.protocol.highlights.Laser laser = 4;
+  .logi.protocol.highlights.Rectangle rect = 5;
+  .logi.protocol.highlights.Annotation annotation = 6;
+  .logi.protocol.highlights.CursorControl cursor_control = 7;
+  bool highlights_freeze = 8;
+  .logi.protocol.highlights.HighlightsList selected_highlights = 9;
+  bool boxing_effect = 10;
+  bool effect_specific_config = 11;
+}
+
+message FocusScreen {
+  bool start = 1;
+}
+
+message ChangeHighlight {
+  bool start = 1;
+  string slot_id = 2;
+}
+
+message HighlightsList {
+  repeated .logi.protocol.highlights.EffectType list = 1;
+}
+
+message DeviceHighlightSettings {
+  string device_id = 1;
+  .logi.protocol.highlights.HighlightsSettings highlight_settings = 2;
+  string slot_id = 3;
+}
+
+enum EffectType {
+  effect_none = 0;
+  effect_vignette = 1;
+  effect_magnifier = 2;
+  effect_circle = 3;
+  effect_focus_screen = 4;
+  effect_rectangle = 5;
+  effect_annotation = 6;
+  effect_cursor = 7;
+}
+

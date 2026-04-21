@@ -1,0 +1,254 @@
+syntax = "proto3";
+
+package logi.protocol.siminput;
+
+import "logi/protocol/media.proto";
+import "logi/protocol/touchpad.proto";
+
+message Input {
+  message Keyboard {
+    .logi.protocol.siminput.Input.Action action = 1;
+    repeated uint32 modifier_hid_codes = 2;
+    uint32 key_hid_code = 3;
+    string virtual_key_id = 4;
+  }
+
+  message MouseButton {
+    .logi.protocol.siminput.Input.Action action = 1;
+    uint32 hid_usage = 2;
+  }
+
+  message MouseMove {
+    enum Type {
+      UNKNOWN = 0;
+      ABSOLUTE_MOVE = 1;
+      RELATIVE_MOVE = 2;
+      VIRTUAL_DESKTOP = 3;
+    }
+
+    .logi.protocol.siminput.Input.MouseMove.Type type = 1;
+    int32 x = 2;
+    int32 y = 3;
+  }
+
+  message MouseWheel {
+    message MacOsScrollWheelParameters {
+      bool disable_acceleration = 1;
+      uint32 screen_dpi = 2;
+      double mac_min_scroll_speed = 3;
+      double mac_max_scroll_speed = 4;
+    }
+
+    double delta_x = 1;
+    double delta_y = 2;
+    .logi.protocol.siminput.Input.WheelMoveMode mode = 3;
+    uint32 period_count = 4;
+    uint32 period_ms = 5;
+    double sensitivity = 6;
+    bool smooth_scrolling = 7;
+    uint64 timestamp = 8;
+    double line_factor = 9;
+    .logi.protocol.siminput.Input.MouseWheel.MacOsScrollWheelParameters macos_scroll_wheel_parameters = 10;
+  }
+
+  message RatchetSwitch {
+    bool ratchet = 1;
+  }
+
+  message ScrollMultiplier {
+    uint32 multiplier = 1;
+  }
+
+  message MouseTilt {
+    enum State {
+      INACTIVE = 0;
+      START = 1;
+      PROGRESS = 2;
+      END = 3;
+      STATELESS = 4;
+    }
+
+    double delta = 1;
+    .logi.protocol.siminput.Input.WheelMoveMode mode = 2;
+    .logi.protocol.siminput.Input.MouseTilt.State state = 3;
+    double sensitivity = 5;
+    bool smooth_scrolling = 6;
+  }
+
+  message Mouse {
+    .logi.protocol.siminput.Input.MouseButton button = 1;
+    .logi.protocol.siminput.Input.MouseMove move = 2;
+    .logi.protocol.siminput.Input.MouseWheel wheel = 3;
+    .logi.protocol.siminput.Input.MouseTilt tilt = 4;
+  }
+
+  message Gesture {
+    enum State {
+      INACTIVE = 0;
+      START = 1;
+      PROGRESS = 2;
+      END = 3;
+      CANCELED = 5;
+    }
+
+    enum Action {
+      INVALID = 0;
+      ZOOM = 1;
+      ROTATE = 2;
+      PAN = 3;
+      DESKTOP_SWIPE = 4;
+      PAGES_SWIPE = 5;
+      APP_EXPOSE_MISSION_CONTROL = 6;
+      NOTIFICATION_CENTER = 7;
+      LAUNCHPAD_SHOW_DESKTOP = 8;
+      DESKTOP_SWIPE_TOUCHPAD = 9;
+      ROTATE_TOUCHPAD = 10;
+      ZOOM_TOUCHPAD = 11;
+      SCROLL_TOUCHPAD = 12;
+      SWIPE_PAGES_TOUCHPAD = 13;
+    }
+
+    .logi.protocol.siminput.Input.Gesture.State state = 1;
+    .logi.protocol.siminput.Input.Gesture.Action action = 2;
+    int32 dx = 3;
+    int32 dy = 4;
+    double speed = 5;
+    double touchpad_dx = 6;
+    double touchpad_dy = 7;
+    double progress = 8;
+    double velocity_x = 9;
+    double velocity_y = 10;
+    .logi.protocol.touchpad.GestureDirection direction = 11;
+    repeated .logi.protocol.touchpad.TouchPoint fingers = 12;
+    double rotate = 13;
+    double scale_factor = 14;
+    bool is_scroll_natural = 15;
+    double cx = 16;
+    double cy = 17;
+    bool curtain_swipes = 18;
+    double scroll_speed = 19;
+  }
+
+  message Media {
+    .logi.protocol.media.Usage usage = 1;
+    uint32 play_count = 2;
+  }
+
+  message QuickLaunch {
+    .logi.protocol.siminput.Input.Action action = 1;
+  }
+
+  message System {
+    .logi.protocol.siminput.Input.Action action = 1;
+  }
+
+  message Unicode {
+    string text = 1;
+  }
+
+  message OpenWebPage {
+    string url = 1;
+  }
+
+  message WheelDisturbance {
+    uint32 control_id = 1;
+  }
+
+  message ScreenCapture {
+    .logi.protocol.siminput.Input.AreaToCapture areatocapture = 1;
+    .logi.protocol.siminput.Input.DestinationFolder destinationfolder = 2;
+  }
+
+  message AdvancedClick {
+    uint32 hid_usage = 1;
+    uint32 number_of_clicks = 2;
+    bool is_pressed = 3;
+    repeated uint32 modifiers = 4;
+  }
+
+  message TouchpadSystemActions {
+    message ActionSetting {
+      .logi.protocol.siminput.Input.Action action = 1;
+      bool enable = 2;
+    }
+
+    enum SyncAction {
+      INVALID = 0;
+      MODIFY = 1;
+      RESTORE = 2;
+    }
+
+    repeated .logi.protocol.siminput.Input.TouchpadSystemActions.ActionSetting actions = 1;
+  }
+
+  enum Action {
+    UNKNOWN = 0;
+    PRESS = 1;
+    RELEASE = 2;
+    CLICK = 3;
+    PRESS_FORWARD = 4;
+    RELEASE_FORWARD = 5;
+    PRESS_BACK = 6;
+    RELEASE_BACK = 7;
+    LAUNCHPAD = 8;
+    MISSION_CONTROL = 9;
+    ZOOM_IN = 10;
+    ZOOM_OUT = 11;
+    HORIZONTAL_SCROLL_LEFT = 12;
+    HORIZONTAL_SCROLL_RIGHT = 13;
+    BRIGHTNESS_UP = 14;
+    BRIGHTNESS_DOWN = 15;
+    SHOW_DESKTOP = 16;
+    CALCULATOR = 17;
+    APP_EXPOSE = 18;
+    SMART_ZOOM = 19;
+    ZOOM_IN_START = 20;
+    ZOOM_IN_CONTINUE = 21;
+    ZOOM_OUT_START = 22;
+    ZOOM_OUT_CONTINUE = 23;
+    ZOOM_STOP = 24;
+    ENABLE_DICTATION = 25;
+    DO_NOT_DISTURB = 26;
+    OPEN_WEB_PAGE = 27;
+    SYSTEM_PREFERENCES = 28;
+    LOOK_UP_GESTURE = 29;
+    APP_EXPOSE_MISSION_CONTROL_GESTURE = 30;
+    NOTIFICATION_CENTER_GESTURE = 31;
+  }
+
+  enum AreaToCapture {
+    CAPTURE_AREA_NONE = 0;
+    CAPTURE_SCREEN = 1;
+    CAPTURE_WINDOW = 2;
+    CAPTURE_REGION = 3;
+  }
+
+  enum DestinationFolder {
+    CAPTURE_FOLDER_NONE = 0;
+    CAPTURE_CLIPBOARD = 1;
+    CAPTURE_FILE = 2;
+  }
+
+  enum WheelMoveMode {
+    UNKNOWN_MODE = 0;
+    PER_PIXEL_MODE = 1;
+    PER_LINE_MODE = 2;
+  }
+
+  .logi.protocol.siminput.Input.Keyboard keyboard = 1;
+  .logi.protocol.siminput.Input.Mouse mouse = 2;
+  .logi.protocol.siminput.Input.Media media = 3;
+  .logi.protocol.siminput.Input.QuickLaunch quicklaunch = 4;
+  .logi.protocol.siminput.Input.Unicode unicode = 5;
+  bool diverted = 6;
+  .logi.protocol.siminput.Input.System system = 7;
+  .logi.protocol.siminput.Input.RatchetSwitch ratchet_switch = 8;
+  .logi.protocol.siminput.Input.ScrollMultiplier scroll_multiplier = 9;
+  .logi.protocol.siminput.Input.WheelDisturbance wheel_disturbance = 10;
+  .logi.protocol.siminput.Input.ScreenCapture screencapture = 11;
+  .logi.protocol.siminput.Input.Gesture gesture = 12;
+  .logi.protocol.siminput.Input.AdvancedClick advancedclick = 13;
+  .logi.protocol.siminput.Input.OpenWebPage open_web_page = 14;
+  .logi.protocol.siminput.Input.TouchpadSystemActions system_actions = 15;
+}
+

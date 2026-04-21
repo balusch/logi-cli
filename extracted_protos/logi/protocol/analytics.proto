@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+package logi.protocol.analytics;
+
+message Status {
+  bool enabled = 1;
+  string client_id = 2;
+  bool needs_updating = 3;
+  bool user_prompted = 4;
+  string version_number = 5;
+}
+
+message Event {
+  string category = 1;
+  string name = 2;
+  string data = 3;
+  string status = 4;
+  string group = 5;
+  string extra = 6;
+}
+

@@ -1,0 +1,238 @@
+syntax = "proto3";
+
+package logi.protocol.touchpad;
+
+import "logi/protocol/util.proto";
+
+message PointerSettings {
+  uint32 min = 1;
+  uint32 max = 2;
+  double cur = 3;
+}
+
+message Settings {
+  .logi.protocol.touchpad.LookUpTrigger look_up_trigger = 1;
+  bool is_look_up_enabled = 2;
+  .logi.protocol.touchpad.SecondaryClickTrigger secondary_click_trigger = 3;
+  bool is_secondary_click_enabled = 4;
+  bool is_tap_to_click_enabled = 5;
+  .logi.protocol.touchpad.ClickThreshold click_threshold = 6;
+  .logi.protocol.touchpad.TrackingSpeed tracking_speed = 7;
+  .logi.protocol.touchpad.ScrollDirection scroll_direction = 8;
+  bool is_smooth_scroll_enabled = 9;
+  bool default_secondary_click_enabled = 10;
+  bool default_tap_to_click_enabled = 11;
+  .logi.protocol.touchpad.ScrollDirection default_scroll_direction = 12;
+  uint32 scrolling_speed = 13;
+  uint32 default_scrolling_speed = 14;
+  bool is_accessible_drag_drop_enabled = 15;
+  .logi.protocol.touchpad.DragDropTrigger accessible_drag_drop_trigger = 16;
+  bool is_horizontal_scroll_enabled = 17;
+  bool is_vertical_scroll_enabled = 18;
+  bool is_zoom_two_fingers_enabled = 19;
+  .logi.protocol.touchpad.PointerSettings pointer_settings = 20;
+  double scrolling_speed_in_double = 21;
+  bool is_vertical_scrolling_speed_enabled = 22;
+}
+
+message ScrollSettings {
+  .logi.protocol.touchpad.ScrollDirection scroll_direction = 1;
+  double scroll_speed = 2;
+}
+
+message GestureHandling {
+  .logi.protocol.touchpad.Gestures gesture = 1;
+  .logi.protocol.touchpad.GestureState gesture_state = 2;
+}
+
+message GesturesHandling {
+  repeated .logi.protocol.touchpad.GestureHandling gestures_handling = 1;
+}
+
+message ActionAssignment {
+  string action = 1;
+  .logi.protocol.touchpad.GesturesUI gesture = 2;
+  repeated .logi.protocol.touchpad.GesturesUI allowed_gestures = 3;
+  bool is_enabled = 4;
+  .logi.protocol.touchpad.GesturesUI default_gesture = 5;
+  bool default_enabled = 6;
+}
+
+message ActionGestureMapping {
+  repeated .logi.protocol.touchpad.ActionAssignment actions = 1;
+}
+
+message TouchPoint {
+  double x = 1;
+  double y = 2;
+  double width = 3;
+  double height = 4;
+  uint32 id = 5;
+  bool resting = 6;
+  bool rejected = 7;
+  bool thumb = 8;
+}
+
+message ReportedGesture {
+  enum GestureStatus {
+    INACTIVE = 0;
+    TRACKING = 1;
+    STARTED = 2;
+    ONGOING = 3;
+    STOPPED = 4;
+    CANCELLED = 5;
+    PAUSED = 6;
+    FAILED = 7;
+  }
+
+  .logi.protocol.touchpad.Gestures gesture = 1;
+  .logi.protocol.touchpad.ReportedGesture.GestureStatus status = 2;
+  .logi.protocol.touchpad.GestureDirection direction = 3;
+  uint64 timestamp = 4;
+}
+
+message ReportedGestures {
+  string device_id = 1;
+  repeated .logi.protocol.touchpad.ReportedGesture reported_gestures = 3;
+}
+
+message KeyboardCapabilities {
+  .logi.protocol.util.WinAndOrMacBool is_smooth_scroll_supported = 1;
+  .logi.protocol.util.WinAndOrMacBool is_zoom_two_finger_supported = 2;
+}
+
+enum ScrollDirection {
+  UNDEFINED = 0;
+  NATURAL = 1;
+  STANDARD = 2;
+}
+
+enum LookUpTrigger {
+  LOOK_UP_TRIGGER_DISABLED = 0;
+  FORCE_CLICK_WITH_1_FINGER = 1;
+  TAP_WITH_3_FINGERS = 2;
+}
+
+enum SecondaryClickTrigger {
+  SECONDARY_CLICK_DISABLED = 0;
+  CLICK_OR_TAP_WITH_2_FINGERS = 1;
+  CLICK_BOTTOM_RIGHT_CORNER = 2;
+  CLICK_BOTTOM_LEFT_CORNER = 3;
+}
+
+enum TrackingSpeed {
+  ACCELERATIONLEVEL0 = 0;
+  ACCELERATIONLEVEL1 = 10;
+  ACCELERATIONLEVEL2 = 20;
+  ACCELERATIONLEVEL3 = 30;
+  ACCELERATIONLEVEL4 = 40;
+  ACCELERATIONLEVEL5 = 50;
+  ACCELERATIONLEVEL6 = 60;
+  ACCELERATIONLEVEL7 = 70;
+  ACCELERATIONLEVEL8 = 80;
+  ACCELERATIONLEVEL9 = 90;
+  ACCELERATIONLEVEL10 = 100;
+}
+
+enum ClickThreshold {
+  LIGHT = 0;
+  MEDIUM = 1;
+  FIRM = 2;
+}
+
+enum DragDropTrigger {
+  INVALID_TRIGGER = 0;
+  THREE_FINGER_TAP_AND_HOLD = 1;
+  ONE_FINGER_DOUBLE_TAP_AND_HOLD = 2;
+}
+
+enum Gestures {
+  GESTURE_NONE = 0;
+  GESTURE_1_FINGER_MOVE = 1;
+  GESTURE_1_FINGER_CLICK = 2;
+  GESTURE_1_FINGER_DOUBLE_CLICK = 3;
+  GESTURE_1_FINGER_CLICK_HOLD_AND_MOVE = 4;
+  GESTURE_1_FINGER_CLICK_HOLD_AND_OTHER_FINGERS_MOVE = 5;
+  GESTURE_1_FINGER_TAP = 6;
+  GESTURE_1_FINGER_DOUBLE_TAP = 7;
+  GESTURE_1_FINGER_DOUBLE_TAP_HOLD_AND_MOVE = 8;
+  GESTURE_1_FINGER_CLICK_ON_THE_RIGHT_CORNER = 9;
+  GESTURE_1_FINGER_CLICK_ON_THE_LEFT_CORNER = 10;
+  GESTURE_2_FINGER_SINGLE_TAP = 11;
+  GESTURE_2_FINGER_SINGLE_CLICK = 12;
+  GESTURE_2_FINGER_SLIDE_IN_ANY_DIRECTION = 13;
+  GESTURE_2_FINGER_VERTICAL_SCROLL = 14;
+  GESTURE_2_FINGER_HORIZONTAL_SLIDE = 15;
+  GESTURE_2_FINGER_HORIZONTAL_SWIPE = 16;
+  GESTURE_2_FINGER_EDGE_SWIPE = 17;
+  GESTURE_2_FINGER_SPREAD_PINCH = 18;
+  GESTURE_2_FINGER_ROTATE = 19;
+  GESTURE_2_FINGER_DOUBLE_TAP = 20;
+  GESTURE_3_FINGER_DRAG = 21;
+  GESTURE_3_FINGER_HORIZONTAL_SWIPE = 22;
+  GESTURE_3_FINGER_VERTICAL_SWIPE = 23;
+  GESTURE_3_FINGER_SINGLE_TAP = 24;
+  GESTURE_4_FINGER_HORIZONTAL_SWIPE = 25;
+  GESTURE_4_FINGER_VERTICAL_SWIPE = 26;
+  GESTURE_4_FINGER_SPREAD_PINCH = 27;
+  GESTURE_LAST = 28;
+  GESTURE_2_FINGERS_3RD_FINGER_TAP = 29;
+  GESTURE_2_FINGER_VERTICAL_SWIPE = 30;
+  GESTURE_2_FINGER_ON_TAP_AREA = 31;
+  GESTURE_3_FINGER_DOUBLE_TAP = 32;
+  GESTURE_3_FINGERS_4TH_FINGER_TAP = 33;
+  GESTURE_FLICK = 34;
+  GESTURE_2_FINGER_STOP_TAP = 35;
+  GESTURE_3_FINGER_STOP_TAP = 36;
+  GESTURE_4_FINGER_STOP_TAP = 37;
+}
+
+enum GesturesUI {
+  UI_GESTURE_INVALID = 0;
+  UI_GESTURE_2_FINGER_TAP_CLICK = 1;
+  UI_GESTURE_2_FINGER_SINGLE_TAP = 2;
+  UI_GESTURE_2_FINGER_SINGLE_CLICK = 3;
+  UI_GESTURE_2_FINGER_SLIDE_IN_ANY_DIRECTION = 4;
+  UI_GESTURE_2_FINGER_VERTICAL_SCROLL = 5;
+  UI_GESTURE_2_FINGER_HORIZONTAL_SLIDE = 6;
+  UI_GESTURE_2_FINGER_HORIZONTAL_SWIPE = 7;
+  UI_GESTURE_2_FINGER_EDGE_SWIPE = 8;
+  UI_GESTURE_2_FINGER_SPREAD_PINCH = 9;
+  UI_GESTURE_2_FINGER_ROTATE = 10;
+  UI_GESTURE_2_FINGER_DOUBLE_TAP = 11;
+  UI_GESTURE_3_FINGER_DRAG = 12;
+  UI_GESTURE_3_FINGER_HORIZONTAL_SWIPE = 13;
+  UI_GESTURE_3_FINGER_SWIPE_UP = 14;
+  UI_GESTURE_3_FINGER_SWIPE_DOWN = 15;
+  UI_GESTURE_3_FINGER_SINGLE_TAP = 16;
+  UI_GESTURE_2_OR_3_FINGER_HORIZONTAL_SWIPE = 17;
+  UI_GESTURE_4_FINGER_HORIZONTAL_SWIPE = 18;
+  UI_GESTURE_4_FINGER_SWIPE_UP = 19;
+  UI_GESTURE_4_FINGER_SWIPE_DOWN = 20;
+  UI_GESTURE_4_FINGER_SPREAD = 21;
+  UI_GESTURE_4_FINGER_PINCH = 22;
+}
+
+enum GestureDirection {
+  NONE = 0;
+  UP = 1;
+  DOWN = 2;
+  LEFT = 3;
+  RIGHT = 4;
+  EXPAND = 5;
+  CONTRACT = 6;
+  CLOCKWISE = 7;
+  CCLOCKWISE = 8;
+  HORIZONTAL_SWIPE = 9;
+  ANY_DIRECTION_SWIPE_3_FINGERS = 10;
+  ANY_DIRECTION_SWIPE_3_OR_4_FINGERS = 11;
+}
+
+enum GestureState {
+  UNKNOWN = 0;
+  NOT_SUPPORTED = 1;
+  SUPPORTED_AND_SENT_BY_HID = 2;
+  SUPPORTED_AND_DEACTIVATED = 3;
+  SUPPORTED_AND_SENT_BY_HIDPP = 4;
+}
+

@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+package logi.protocol.resources;
+
+message ReleaseNotes {
+  string content = 1;
+  bool seen = 2;
+}
+
+message LocalizedString {
+  string key = 1;
+  string translated_text = 2;
+}
+
+message LocalizedStrings {
+  repeated .logi.protocol.resources.LocalizedString localized_strings = 1;
+}
+
+message LocalizedPackagesRequest {
+  repeated string packages = 1;
+}
+
+message LocalizedPackage {
+  message StringsEntry {
+    string key = 1;
+    string value = 2;
+  }
+
+  string name = 1;
+  bool available = 2;
+  repeated .logi.protocol.resources.LocalizedPackage.StringsEntry strings = 3;
+}
+
+message LocalizedPackages {
+  repeated .logi.protocol.resources.LocalizedPackage packages = 1;
+}
+

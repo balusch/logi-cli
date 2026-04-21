@@ -1,0 +1,210 @@
+syntax = "proto3";
+
+package logi.protocol.mouse;
+
+import "logi/protocol/util.proto";
+import "logi/protocol/firmware_lighting.proto";
+
+message Dpi {
+  message State {
+    string device_id = 1;
+    uint32 dpi = 2;
+    uint32 dpi_index = 3;
+    bool shifted = 4;
+    uint32 dpi_level = 5;
+  }
+
+  message Table {
+    repeated uint32 levels = 1;
+    uint32 default_dpi = 2;
+    uint32 shift_dpi = 3;
+    uint32 active_dpi = 4;
+    uint32 dpi_level = 5;
+  }
+
+  message Shift {
+    message State {
+      bool enabled = 1;
+      .logi.protocol.mouse.Dpi active_dpi = 2;
+      .logi.protocol.mouse.Dpi shift_dpi = 3;
+    }
+
+    bool on = 1;
+    string device_id = 2;
+  }
+
+  message Info {
+    message Range {
+      uint32 min = 1;
+      uint32 max = 2;
+      uint32 steps = 3;
+      uint32 max_levels = 4;
+    }
+
+    message Levels {
+      repeated uint32 levels = 1;
+    }
+
+    message HighResolutionSensor {
+      bool default_sensor_enabled = 1;
+      uint32 min_dpi_value_sensor_off = 2;
+      uint32 max_dpi_value_sensor_off = 3;
+      uint32 default_dpi_value_sensor_off = 4;
+      uint32 min_dpi_value_sensor_on = 5;
+      uint32 max_dpi_value_sensor_on = 6;
+      uint32 default_dpi_value_sensor_on = 7;
+      uint32 steps_sensor_on = 8;
+      uint32 steps_sensor_off = 9;
+    }
+
+    .logi.protocol.mouse.Dpi.Info.Range range = 1;
+    .logi.protocol.mouse.Dpi.Info.Levels levels = 2;
+    .logi.protocol.mouse.Dpi default_dpi = 3;
+  }
+
+  message Indicator {
+    message Led {
+      message StepsEntry {
+        uint32 key = 1;
+        .logi.protocol.util.Color value = 2;
+      }
+
+      .logi.protocol.firmware_lighting.Devio.Zone.Type zone_type = 1;
+      repeated .logi.protocol.mouse.Dpi.Indicator.Led.StepsEntry steps = 2;
+    }
+
+  }
+
+  uint32 value = 1;
+}
+
+message PointerSpeed {
+  message PointerSpeedValue {
+    float value = 1;
+    bool high_resolution_sensor_active = 2;
+    uint32 dpi_level = 3;
+  }
+
+  .logi.protocol.mouse.PointerSpeed.PointerSpeedValue active = 1;
+}
+
+message PrecisionMode {
+  bool active = 1;
+}
+
+message ReportRate {
+  uint32 value = 1;
+}
+
+message ReportRates {
+  repeated uint32 rates = 1;
+}
+
+message AngleSnapping {
+  bool value = 1;
+}
+
+message Info {
+  .logi.protocol.mouse.ReportRates report_rates = 1;
+  .logi.protocol.mouse.Dpi.Info dpi_info = 2;
+  bool persistence = 3;
+  .logi.protocol.mouse.ModeStatusDevConfig mode_status_config = 4;
+}
+
+message Settings {
+  .logi.protocol.mouse.ReportRate report_rate = 1;
+  .logi.protocol.mouse.Dpi.Table dpi_table = 2;
+  .logi.protocol.mouse.PointerSpeed pointer_speed = 3;
+  uint32 default_tracking_speed = 4;
+  string cps_slot_id = 5;
+  bool is_cps_secondary_button = 6;
+}
+
+message ThumbWheelSettings {
+  double speed = 1;
+  .logi.protocol.mouse.WheelDirection dir = 2;
+  bool isSmooth = 3;
+}
+
+message ScrollWheelCapabilities {
+  bool high_resolution = 1;
+  bool adjustable_speed = 2;
+  bool virtual_thumbwheel = 3;
+  bool smartshift = 4;
+  .logi.protocol.util.WinAndOrMacBool smooth_scroll = 5;
+  bool scroll_speed_mac_disabled = 6;
+}
+
+message SmartShiftSettings {
+  bool is_enabled = 1;
+  uint32 sensitivity = 2;
+  .logi.protocol.mouse.ScrollMode mode = 3;
+  bool is_scroll_force_enabled = 4;
+  uint32 scroll_force = 5;
+}
+
+message ScrollWheelSettings {
+  double speed = 1;
+  .logi.protocol.mouse.WheelDirection dir = 2;
+  bool isSmooth = 3;
+  .logi.protocol.mouse.SmartShiftSettings smartshift = 4;
+  .logi.protocol.mouse.VirtualThumbwheel virtual_thumbwheel = 7;
+}
+
+message MouseWheelSettings {
+  .logi.protocol.mouse.ScrollWheelSettings scroll_wheel = 1;
+  .logi.protocol.mouse.ThumbWheelSettings thumb_wheel = 2;
+}
+
+message ModeStatus {
+  int32 value = 1;
+}
+
+message ModeStatusDevConfig {
+  bool supports_sw_switch = 1;
+}
+
+message MouseButtonSwap {
+  enum SwapState {
+    DEFAULT = 0;
+    RIGHT = 1;
+    LEFT = 3;
+  }
+
+  .logi.protocol.mouse.MouseButtonSwap.SwapState state = 1;
+}
+
+message VirtualThumbwheel {
+  message KeyInfo {
+    uint32 control_id = 1;
+    bool enabled = 2;
+    .logi.protocol.mouse.VirtualThumbwheel.StateChange state_change = 3;
+  }
+
+  enum StateChange {
+    DEFAULT = 0;
+    BY_USER = 1;
+    DUE_TO_CONFLICT_RESOLVE = 2;
+  }
+
+  repeated .logi.protocol.mouse.VirtualThumbwheel.KeyInfo keys = 1;
+}
+
+message PointerSpeedInfo {
+  uint32 pointer_speed_min = 1;
+  uint32 pointer_speed_default = 2;
+  uint32 pointer_speed_max = 3;
+}
+
+enum WheelDirection {
+  UNDEFINED = 0;
+  NATURAL = 1;
+  STANDARD = 2;
+}
+
+enum ScrollMode {
+  UNCHANGED = 0;
+  FREESPIN = 1;
+  RATCHET = 2;
+}
+

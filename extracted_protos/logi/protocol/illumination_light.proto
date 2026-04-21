@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package logi.protocol.illumination_light;
+
+import "logi/protocol/util.proto";
+
+message Settings {
+  bool on = 1;
+  uint32 temperature = 2;
+  uint32 brightness = 3;
+  string preset_name = 4;
+  bool webcam_sync = 5;
+}
+
+message Preset {
+  uint32 temperature = 1;
+  uint32 brightness = 2;
+  string preset_name = 3;
+  bool user_defined = 4;
+}
+
+message LightSettings {
+  bool on = 1;
+  string selected_preset_name = 2;
+  repeated .logi.protocol.illumination_light.Preset light_presets = 3;
+  bool webcam_sync = 4;
+}
+
+message LightSettingsBroadcast {
+  .logi.protocol.illumination_light.Settings settings = 1;
+  string light_slot_prefix = 2;
+}
+
+message CameraPreview {
+  bool preview_status = 1;
+}
+
+message Capabilities {
+  string light_settings_card_id = 1;
+  .logi.protocol.util.RangeUInt color_temperature_range = 2;
+  .logi.protocol.util.RangeUInt brightness_range = 3;
+  repeated uint32 brightness_non_linear_levels = 4;
+  repeated uint32 color_temperature_non_linear_levels = 5;
+}
+
+message ColorRange {
+  uint32 brightness_effective_max = 1;
+}
+
+message CameraSettings {
+  string camera_id = 1;
+}
+
+message LightsCameraPreference {
+  message CameraPreferenceEntry {
+    string key = 1;
+    .logi.protocol.illumination_light.CameraSettings value = 2;
+  }
+
+  repeated .logi.protocol.illumination_light.LightsCameraPreference.CameraPreferenceEntry camera_preference = 1;
+}
+

@@ -1,0 +1,114 @@
+syntax = "proto3";
+
+package logi.protocol.migration;
+
+import "logi/protocol/profiles_v2.proto";
+
+message TaskCard {
+  string task_id = 1;
+  string task_name = 2;
+  string card_id = 3;
+  string selected_gesture_card = 4;
+  string app_id = 5;
+  string options_guid = 6;
+}
+
+message TaskCardList {
+  repeated .logi.protocol.migration.TaskCard tc_list = 1;
+}
+
+message ApplicationMigrationState {
+  enum State {
+    NOT_MIGRATED = 0;
+    MIGRATED = 1;
+  }
+
+  .logi.protocol.migration.ApplicationMigrationState.State migration_state = 2;
+}
+
+message ApplicationSettings {
+  string options_attribute = 1;
+  string kiros_configuration = 2;
+}
+
+message ApplicationSettingsMap {
+  repeated .logi.protocol.migration.ApplicationSettings as_map = 1;
+}
+
+message CardList {
+  repeated .logi.protocol.profiles_v2.Card cards = 1;
+}
+
+message ApplyCardMap {
+  message AssignmentEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.Card value = 2;
+  }
+
+  repeated .logi.protocol.migration.ApplyCardMap.AssignmentEntry assignment = 1;
+}
+
+message DeviceAppGuidMap {
+  message DevicesEntry {
+    string key = 1;
+    .logi.protocol.migration.AppGuidTable value = 2;
+  }
+
+  repeated .logi.protocol.migration.DeviceAppGuidMap.DevicesEntry devices = 1;
+}
+
+message AppGuidTable {
+  repeated .logi.protocol.migration.AppInfo app_table = 1;
+}
+
+message AppInfo {
+  string options_guid = 1;
+  string kiros_guid = 2;
+  string app_name = 3;
+}
+
+message Report {
+  message ReportItem {
+    string id = 1;
+    string icon = 2;
+    string name = 3;
+    string type = 4;
+    .logi.protocol.migration.Report.ReportItemReason reason = 5;
+  }
+
+  message DeviceItem {
+    string model_id = 1;
+    repeated .logi.protocol.migration.Report.ReportItem missing_profiles = 2;
+    repeated .logi.protocol.migration.Report.ReportItem missing_settings = 3;
+    repeated .logi.protocol.migration.Report.ReportItem missing_features = 4;
+    string device_name = 5;
+    .logi.protocol.migration.Report.MigrationStatus migration_status = 6;
+    string migration_notes = 7;
+  }
+
+  enum MigrationStatus {
+    DEVICE_NOT_READY = 0;
+    DEVICE_ALREADY_SEEN = 1;
+    MIGRATION_SKIPPED = 2;
+    MIGRATION_INITIATED = 3;
+    MIGRATION_DESKTOP_IN_PROGRESS = 4;
+    MIGRATION_DESKTOP_COMPLETE = 5;
+    MIGRATION_PROFILES_IN_PROGRESS = 6;
+    MIGRATION_PROFILES_COMPLETE = 7;
+    MIGRATION_COMPLETE = 8;
+    MIGRATION_PROFILES_IN_PROGRESS_PLUGIN = 9;
+  }
+
+  enum ReportItemReason {
+    NOT_SUPPORTED = 0;
+    REQUIRES_UXP_PLUGIN_INSTALLATION = 1;
+    FAILED = 2;
+  }
+
+  repeated .logi.protocol.migration.Report.DeviceItem devices = 1;
+}
+
+message MissingSettingsDiscard {
+  string model_id = 1;
+}
+

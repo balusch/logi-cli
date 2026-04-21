@@ -1,0 +1,107 @@
+syntax = "proto3";
+
+package logi.protocol.flow;
+
+message DeviceLocation {
+  uint32 device_channel = 1;
+  uint32 self_channel = 2;
+}
+
+message Discover {
+  uint32 tries = 1;
+  uint32 timeout = 2;
+}
+
+message DiscoverResult {
+  bool changed = 1;
+}
+
+message DiscoverProgress {
+  enum Status {
+    DUMMY = 0;
+    IDLE = 1;
+    STARTED = 2;
+    FOUND = 3;
+    CANCELED = 4;
+  }
+
+  .logi.protocol.flow.DiscoverProgress.Status status = 1;
+}
+
+message PeerStatus {
+  message HostConfig {
+    uint32 channel = 1;
+    uint32 keyboard_channel = 2;
+    string id = 3;
+    bool enabled = 4;
+    bool connected = 5;
+  }
+
+  repeated .logi.protocol.flow.PeerStatus.HostConfig peers = 1;
+}
+
+message Config {
+  message HostConfig {
+    uint32 channel = 1;
+    uint32 keyboard_channel = 2;
+    string id = 3;
+    bool enabled = 4;
+  }
+
+  enum Arrangement {
+    DUMMY = 0;
+    LEFT_TOP = 1;
+    RIGHT_TOP = 2;
+    LEFT_BOTTOM = 3;
+    RIGHT_BOTTOM = 4;
+    HORIZONTAL = 5;
+    VERTICAL = 6;
+  }
+
+  bool on = 1;
+  bool hot_corners = 2;
+  bool control_key = 3;
+  bool copy_paste = 4;
+  bool drag_drop = 5;
+  bool keyboard_link = 6;
+  string keyboard_id = 7;
+  .logi.protocol.flow.Config.Arrangement arrangement = 8;
+  repeated .logi.protocol.flow.Config.HostConfig hosts = 9;
+}
+
+message EdgeHit {
+  message Range {
+    int32 min = 1;
+    int32 max = 2;
+  }
+
+  message Point {
+    int32 x = 1;
+    int32 y = 2;
+  }
+
+  message Rectangle {
+    .logi.protocol.flow.EdgeHit.Point point = 1;
+    uint32 width = 2;
+    uint32 height = 3;
+  }
+
+  message Edge {
+    enum Type {
+      LEFT = 0;
+      RIGHT = 1;
+      TOP = 2;
+      BOTTOM = 3;
+    }
+
+    .logi.protocol.flow.EdgeHit.Edge.Type type = 1;
+    int32 position = 2;
+    .logi.protocol.flow.EdgeHit.Range range = 3;
+    .logi.protocol.flow.EdgeHit.Rectangle monitor = 4;
+  }
+
+  .logi.protocol.flow.EdgeHit.Edge edge = 1;
+  .logi.protocol.flow.EdgeHit.Point position = 2;
+  bool is_ctrl_key_down = 3;
+}
+

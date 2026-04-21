@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package logi.protocol.right_sight;
+
+message ConditionDetail {
+  enum Phase {
+    IDLE = 0;
+    CHECKING_DEPENDENCIES = 1;
+    DOWNLOADING_DEPENDENCIES = 2;
+    INSTALLING_DEPENDENCIES = 3;
+    FAILED_DEPENDENCIES = 4;
+    READY_DEPENDENCIES = 5;
+    CHECKING_RS = 6;
+    DOWNLOADING_RS = 7;
+    FAILED_RS = 8;
+    INSTALLING_RS = 9;
+    READY = 10;
+  }
+
+  .logi.protocol.right_sight.ConditionDetail.Phase phase = 1;
+  bool download_requested = 2;
+  string message = 3;
+}
+
+message Status {
+  enum State {
+    INVALID = 0;
+    NOT_PRESENT = 1;
+    NOT_COMPATIBLE = 2;
+    EFFECTIVE_NEW = 3;
+    EFFECTIVE_OLD = 4;
+    BOTH_PRESENT = 5;
+    BOTH_PRESENT_NOT_COMPATIBLE = 6;
+  }
+
+  enum InstallAction {
+    NONE = 0;
+    REINSTALLING = 1;
+    REINSTALL_FAILED = 2;
+    UNINSTALLING = 3;
+    UNINSTALL_FAILED = 4;
+    CONDITION_CHECKING = 5;
+    CONDITION_FAILED = 6;
+  }
+
+  .logi.protocol.right_sight.Status.State state = 1;
+  .logi.protocol.right_sight.Status.InstallAction install_action = 2;
+  .logi.protocol.right_sight.ConditionDetail condition_detail = 3;
+}
+

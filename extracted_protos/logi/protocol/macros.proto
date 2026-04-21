@@ -1,0 +1,678 @@
+syntax = "proto3";
+
+package logi.protocol.macros;
+
+import "logi/protocol/devices.proto";
+import "logi/protocol/media.proto";
+import "logi/protocol/input_tracker.proto";
+import "logi/protocol/util.proto";
+import "logi/protocol/applications.proto";
+import "logi/protocol/haptics.proto";
+import "logi/common_protocol/message.proto";
+import "google/protobuf/struct.proto";
+
+message Macro {
+  message Validation {
+    enum Code {
+      INVALID = 0;
+      KEY_UP_BEFORE_DOWN = 1;
+      KEY_DOWN_NO_UP = 2;
+      MOUSE_BUTTON_UP_BEFORE_DOWN = 3;
+      MOUSE_BUTTON_DOWN_NO_UP = 4;
+    }
+
+    bool is_valid = 1;
+    bool is_onboardable = 2;
+    .logi.protocol.macros.Macro.Validation.Code code = 3;
+  }
+
+  message QuickLaunch {
+    enum Action {
+      CALCULATOR = 0;
+      LAUNCHPAD = 1;
+      MISSION_CONTROL = 2;
+      APP_EXPOSE = 3;
+      SYSTEM_PREFERENCES = 4;
+      LOOK_UP = 5;
+    }
+
+    .logi.protocol.macros.Macro.QuickLaunch.Action action = 1;
+  }
+
+  message GHub {
+    enum Action {
+      INVALID = 0;
+      CYCLE_GHUB_PROFILE = 1;
+      DISABLE_GHUB_SLOT = 2;
+      DEFAULT_GHUB_SLOT = 3;
+    }
+
+    .logi.protocol.macros.Macro.GHub.Action action = 1;
+  }
+
+  message Keystroke {
+    uint32 code = 1;
+    repeated uint32 modifiers = 2;
+    string display_character = 3;
+    string virtual_key_id = 4;
+  }
+
+  message TextBlock {
+    string text = 1;
+    string cat = 2;
+    string id = 3;
+  }
+
+  message Mouse {
+    message DpiSettings {
+      uint32 short_press = 1;
+      uint32 dpi_value = 2;
+    }
+
+    enum Action {
+      INVALID = 0;
+      DPI_UP = 1;
+      DPI_DOWN = 2;
+      DPI_SHIFT = 3;
+      DPI_CYCLE = 4;
+      DPI_DEFAULT = 5;
+      BUTTON = 6;
+      BUTTON_DOUBLE_CLICK = 8;
+      WHEEL_UP = 9;
+      WHEEL_DOWN = 10;
+      WHEEL_LEFT = 11;
+      WHEEL_RIGHT = 12;
+      DPI_GO_TO_SHIFT = 14;
+      OSX_GESTURE_BACK = 15;
+      OSX_GESTURE_FORWARD = 16;
+      WIN_BACK = 17;
+      WIN_FORWARD = 18;
+    }
+
+    .logi.protocol.macros.Macro.Mouse.Action action = 1;
+    uint32 hid_usage = 2;
+    .logi.protocol.macros.Macro.Mouse.DpiSettings dpi_settings = 3;
+  }
+
+  message Media {
+    .logi.protocol.media.Usage usage = 1;
+  }
+
+  message System {
+    enum Action {
+      INVALID = 0;
+      CLOSE = 1;
+      MINIMIZE = 2;
+      MAXIMIZE = 3;
+      FULLSCREEN = 4;
+      COPY = 5;
+      PASTE = 6;
+      UNDO = 7;
+      REDO = 8;
+      DESKTOP = 9;
+      FILE_CLIENT = 10;
+      INTERNET_CLIENT = 11;
+      MAIL_CLIENT = 12;
+      MEDIA_CLIENT = 13;
+      CONSOLE_CLIENT = 14;
+      ZOOM_IN = 15;
+      ZOOM_OUT = 16;
+      SCROLL_LEFT = 17;
+      SCROLL_RIGHT = 18;
+      SNAP_LEFT = 19;
+      SNAP_RIGHT = 20;
+      APP_EXPOSE = 22;
+      SWITCH_BETWEEN_DESKTOPS = 23;
+      SWITCH_BETWEEN_DESKTOPS_LEFT = 24;
+      SWITCH_BETWEEN_DESKTOPS_RIGHT = 25;
+      NONE = 26;
+      SWITCH_APPS = 27;
+      SHIFT_SWITCH_APPS = 28;
+      BRIGHTNESS_UP = 29;
+      BRIGHTNESS_DOWN = 30;
+      SHOW_DESKTOP = 31;
+      BACKLIGHT_DOWN = 32;
+      BACKLIGHT_UP = 33;
+      WINDOWS_SCREEN_CAPTURE = 34;
+      LOOK_UP = 35;
+      LOCK = 36;
+      APP_MENU = 37;
+      TASK_VIEW = 38;
+      EJECT = 39;
+      PHOTOSHOP_PAN_HOLD = 40;
+      SMART_ZOOM = 41;
+      SHUT_DOWN = 42;
+      SLEEP = 43;
+      HOME = 44;
+      SWITCH_LANGUAGE = 45;
+      PHOTOSHOP_ZOOM_IN = 46;
+      PHOTOSHOP_ZOOM_OUT = 47;
+      EXCEL_ZOOM_IN = 48;
+      EXCEL_ZOOM_OUT = 49;
+      WORD_ZOOM_IN = 50;
+      WORD_ZOOM_OUT = 51;
+      WORD_TEXT_SIZE_UP = 52;
+      WORD_TEXT_SIZE_DOWN = 53;
+      ENABLE_DICTATION = 54;
+      DO_NOT_DISTURB = 55;
+      POWERPOINT_ZOOM_IN = 56;
+      POWERPOINT_ZOOM_OUT = 57;
+      POWERPOINT_TEXT_SIZE_UP = 58;
+      POWERPOINT_TEXT_SIZE_DOWN = 59;
+      LOGI_VOICE = 60;
+      FROW = 61;
+      SHOW_RADIAL_MENU = 62;
+      LANGUAGE_SWITCH = 63;
+      BACKLIGHT_CYCLING = 64;
+      WINDOWS_HIGH_CONTRAST = 65;
+      WINDOWS_PRINT_SCREEN = 66;
+      COPILOT_OOB = 67;
+      RIGHT_OPT = 68;
+      HANJA = 69;
+      LAUNCH_SIRI = 70;
+      BACKLIGHT_EFFECTS = 71;
+    }
+
+    .logi.protocol.macros.Macro.System.Action action = 1;
+    double current_tilt_speed = 2;
+  }
+
+  message Dpi {
+    enum Action {
+      NONE = 0;
+    }
+
+    .logi.protocol.macros.Macro.Dpi.Action action = 1;
+  }
+
+  message App {
+    string executable_path = 1;
+    string working_directory_path = 2;
+    repeated string argument_list = 4;
+  }
+
+  message OpenFileFolder {
+    string path = 1;
+    bool is_folder_mode = 2;
+    string app_name = 3;
+  }
+
+  message OpenWebPage {
+    string url = 1;
+    bool show_ui = 2;
+  }
+
+  message ScreenCapture {
+    enum AreaToCapture {
+      CAPTURE_AREA_NONE = 0;
+      CAPTURE_SCREEN = 1;
+      CAPTURE_WINDOW = 2;
+      CAPTURE_REGION = 3;
+    }
+
+    enum DestinationFolder {
+      CAPTURE_FOLDER_NONE = 0;
+      CAPTURE_CLIPBOARD = 1;
+      CAPTURE_FILE = 2;
+    }
+
+    .logi.protocol.macros.Macro.ScreenCapture.AreaToCapture areatocapture = 1;
+    .logi.protocol.macros.Macro.ScreenCapture.DestinationFolder destinationfolder = 2;
+  }
+
+  message AdvancedClick {
+    enum AdvancedClickType {
+      SINGLE_CLICK = 0;
+      DOUBLE_CLICK = 1;
+      TRIPLE_CLICK = 2;
+      RIGHT_CLICK = 3;
+      MIDDLE_CLICK = 4;
+    }
+
+    .logi.protocol.macros.Macro.AdvancedClick.AdvancedClickType click_type = 1;
+    bool is_shift_enabled = 2;
+    bool is_ctrl_enabled = 3;
+    bool is_alt_enabled = 4;
+    bool is_win_enabled = 5;
+  }
+
+  message Audio {
+    enum Action {
+      INVALID = 0;
+      MUTE_SPEAKERS = 1;
+      MUTE_MICROPHONE = 2;
+      MICROPHONE_GAIN_INCREASE = 3;
+      MICROPHONE_GAIN_DECREASE = 4;
+      SIDETONE_INCREASE = 5;
+      SIDETONE_DECREASE = 6;
+      BASS_INCREASE = 7;
+      BASS_DECREASE = 8;
+      TREBLE_INCREASE = 9;
+      TREBLE_DECREASE = 10;
+      ADVANCED_EQ_TOGGLE = 11;
+      SURROUND_TOGGLE = 12;
+      EQ_CYCLE = 13;
+      SPEAKER_DEVICE_CYCLE = 14;
+      MICROPHONE_DEVICE_CYCLE = 15;
+      MAKE_DEFAULT_SOURCE = 16;
+    }
+
+    .logi.protocol.macros.Macro.Audio.Action action = 1;
+    bool audio_device_only = 2;
+    string device_slot_prefix = 3;
+  }
+
+  message Sequence {
+    message Keyboard {
+      uint32 hid_usage = 1;
+      bool is_down = 2;
+    }
+
+    message Component {
+      .logi.protocol.input_tracker.Event.Keyboard keyboard = 1;
+      .logi.protocol.macros.Macro.Delay delay = 2;
+      .logi.protocol.macros.Macro.TextBlock text_block = 3;
+      .logi.protocol.input_tracker.Event.Mouse mouse = 4;
+      .logi.protocol.macros.Macro.Keystroke keystroke = 5;
+      .logi.protocol.macros.Macro.Mouse mouse_macro = 6;
+      .logi.protocol.macros.Macro.System system = 7;
+      .logi.protocol.macros.Macro.App app = 8;
+      .logi.protocol.macros.Macro.Audio audio = 9;
+      .logi.protocol.macros.Macro.Media media = 10;
+      .logi.protocol.macros.Macro.Lighting lighting = 11;
+      .logi.protocol.macros.Macro.GHub ghub = 12;
+      .logi.protocol.macros.Macro.Action action = 13;
+      .logi.protocol.macros.Macro.Device device = 14;
+      .logi.protocol.macros.Macro.Type type = 20;
+      string name = 21;
+    }
+
+    message StateSequence {
+      repeated .logi.protocol.macros.Macro.Sequence.Component components = 1;
+      bool interruptible = 2;
+    }
+
+    .logi.protocol.macros.Macro.Sequence.StateSequence simple_sequence = 1;
+    .logi.protocol.macros.Macro.Sequence.StateSequence press_sequence = 2;
+    .logi.protocol.macros.Macro.Sequence.StateSequence held_sequence = 3;
+    .logi.protocol.macros.Macro.Sequence.StateSequence release_sequence = 4;
+    .logi.protocol.macros.Macro.Sequence.StateSequence toggle_sequence = 5;
+    bool use_default_delay = 6;
+    uint32 default_delay = 7;
+    bool use_toggle_actions = 8;
+    bool use_simple_actions = 9;
+    bool use_repeat_actions = 10;
+    bool show_up_down = 11;
+  }
+
+  message Lighting {
+    enum Action {
+      INVALID = 0;
+      CYCLE_FIRMWARE_BRIGHTNESS = 1;
+      CYCLE_SOFTWARE_BRIGHTNESS = 2;
+    }
+
+    .logi.protocol.macros.Macro.Lighting.Action action = 1;
+    bool firmware_lighting_action = 2;
+  }
+
+  message Action {
+    message ParametersEntry {
+      string key = 1;
+      string value = 2;
+    }
+
+    message ErroneousParametersEntry {
+      string key = 1;
+      string value = 2;
+    }
+
+    string action_id = 1;
+    repeated .logi.protocol.macros.Macro.Action.ParametersEntry parameters = 2;
+    repeated .logi.protocol.macros.Macro.Action.ErroneousParametersEntry erroneous_parameters = 3;
+    string integration_id = 4;
+  }
+
+  message Device {
+    message Info {
+      optional string model = 1;
+      optional string id = 2;
+      optional string name = 3;
+      optional string slot_prefix = 4;
+    }
+
+    enum Action {
+      INVALID = 0;
+      PROFILE_CYCLE = 1;
+      PROFILE_NEXT = 2;
+      PROFILE_PREV = 3;
+      PROFILE_ACTIVATE = 4;
+      G_SHIFT = 5;
+      BATTERY_LIFE = 6;
+      G_SHIFT_DEFAULT = 7;
+      HAPTICS = 8;
+    }
+
+    .logi.protocol.macros.Macro.Device.Action action = 1;
+    .logi.protocol.macros.Macro.Device.Info info = 2;
+    .logi.protocol.haptics.Haptics.PlayWaveFormRequest haptic_waveform_request = 3;
+  }
+
+  message DoNothing {
+    enum Action {
+      NONE = 0;
+    }
+
+    .logi.protocol.macros.Macro.DoNothing.Action action = 1;
+  }
+
+  message MacroWithRules {
+    message RulesEntry {
+      string key = 1;
+      string value = 2;
+    }
+
+    repeated .logi.protocol.macros.Macro.MacroWithRules.RulesEntry rules = 1;
+    .logi.protocol.macros.Macro macro = 2;
+  }
+
+  message Delay {
+    uint32 duration_ms = 1;
+  }
+
+  message AppWindowsManagement {
+    enum Type {
+      NONE = 0;
+      CLOSE = 1;
+      MAXIMIZE = 2;
+      MINIMIZE = 3;
+      SHOW = 4;
+      HIDE = 5;
+      BRING_TO_FOREGROUND = 6;
+    }
+
+    string path = 1;
+    string bundle_id = 2;
+    .logi.protocol.macros.Macro.AppWindowsManagement.Type action = 3;
+    string app_name = 4;
+  }
+
+  message ArtificialIntelligence {
+    enum Action {
+      AI_OVERLAY = 0;
+      CHATGPT = 1;
+      OPEN_LOGI_AI_PORTAL = 2;
+    }
+
+    .logi.protocol.macros.Macro.ArtificialIntelligence.Action action = 1;
+  }
+
+  message LpsAction {
+    string action_id = 1;
+    int32 number_of_ticks = 2;
+    .google.protobuf.Struct parameters = 3;
+    bool registered_action = 4;
+  }
+
+  enum Type {
+    INVALID = 0;
+    KEYSTROKE = 1;
+    TEXT_BLOCK = 2;
+    MOUSE = 3;
+    SYSTEM = 4;
+    APP = 5;
+    AUDIO = 6;
+    MEDIA = 7;
+    SEQUENCE = 8;
+    LIGHTING = 9;
+    GHUB = 10;
+    ACTION = 11;
+    DEVICE = 12;
+    QUICK_LAUNCH = 13;
+    DO_NOTHING = 14;
+    DPI = 15;
+    OPEN_FILE_FOLDER = 16;
+    OPEN_WEB_PAGE = 17;
+    ADVANCED_CLICK = 18;
+    SCREEN_CAPTURE = 19;
+    DPI_SETTINGS = 20;
+    DELAY = 21;
+    INPUT_SEQUENCE = 22;
+    APP_WINDOWS_MANAGEMENT = 23;
+    ARTIFICIAL_INTELLIGENCE = 24;
+    LPS_ACTION = 25;
+  }
+
+  .logi.protocol.macros.Macro.Type type = 1;
+  .logi.protocol.macros.Macro.Keystroke keystroke = 2;
+  .logi.protocol.macros.Macro.Mouse mouse = 3;
+  .logi.protocol.macros.Macro.System system = 4;
+  .logi.protocol.macros.Macro.App app = 5;
+  .logi.protocol.macros.Macro.Audio audio = 6;
+  .logi.protocol.macros.Macro.Media media = 7;
+  .logi.protocol.macros.Macro.Sequence sequence = 8;
+  .logi.protocol.macros.Macro.Lighting lighting = 9;
+  .logi.protocol.macros.Macro.GHub ghub = 10;
+  .logi.protocol.macros.Macro.Action action = 11;
+  .logi.protocol.macros.Macro.Device device = 12;
+  bool onboardable = 13;
+  string action_name = 14;
+  string icon = 15;
+  .logi.protocol.util.Color color = 16;
+  .logi.protocol.macros.Macro.QuickLaunch quick_launch = 17;
+  .logi.protocol.macros.Macro.DoNothing do_nothing = 18;
+  .logi.protocol.macros.Macro.Dpi dpi = 19;
+  .logi.protocol.macros.Macro.AdvancedClick advancedclick = 21;
+  .logi.protocol.macros.Macro.ScreenCapture screen_capture = 22;
+  .logi.protocol.macros.Macro.OpenFileFolder open_file_folder = 23;
+  repeated .logi.protocol.macros.Macro.MacroWithRules alternate_macros = 24;
+  uint32 init_period = 25;
+  uint32 repeat_period = 26;
+  .logi.protocol.macros.Macro.TextBlock text_block = 27;
+  .logi.protocol.macros.Macro.OpenWebPage open_web_page = 28;
+  .logi.protocol.macros.Macro.Delay delay = 29;
+  .logi.protocol.macros.InputSequence input_sequence = 30;
+  .logi.protocol.macros.Macro.AppWindowsManagement app_windows_management = 31;
+  .logi.protocol.macros.Macro.ArtificialIntelligence artificial_intelligence = 32;
+  .logi.protocol.macros.Macro.LpsAction lps_action = 33;
+}
+
+message Gesture {
+  enum Action {
+    INVALID = 0;
+    HORIZONTAL_SCROLL = 1;
+    VOLUME_CONTROL = 2;
+    ZOOM = 3;
+    SWITCH_DESKTOPS = 4;
+    NONE = 5;
+  }
+
+  enum Behavior {
+    ALLOW_DELAYED_TERMINATION = 0;
+    PREVENT_DELAYED_TERMINATION = 1;
+  }
+
+  .logi.protocol.macros.Gesture.Action action = 1;
+  .logi.protocol.macros.Gesture.Behavior behavior = 2;
+}
+
+message Status {
+  enum State {
+    INVALID = 0;
+    READY = 1;
+    RECORDING_UI_MACRO = 2;
+    RECORDING_QUICK_MACRO = 3;
+  }
+
+  .logi.protocol.macros.Status.State state = 1;
+  string recording_for_slot_id = 2;
+  string recording_for_profile_id = 3;
+}
+
+message TriggerContext {
+  string slot_id = 1;
+  string nested_card_id = 2;
+  string device_id = 3;
+  .logi.protocol.devices.Device.Type device_type = 4;
+}
+
+message TriggerContextList {
+  repeated string id_list = 1;
+}
+
+message TriggerTransferContext {
+  string from = 1;
+  string to = 2;
+}
+
+message QuickRecording {
+  bool enabled = 1;
+  string slot_id = 2;
+}
+
+message Preset {
+  enum Platform {
+    ANY = 0;
+    WIN = 1;
+    OSX = 2;
+  }
+
+  enum CardType {
+    MISC = 0;
+    BUTTON = 1;
+    MOUSE = 2;
+    THUMBWHEEL = 3;
+    GESTURE = 4;
+    SCROLL = 5;
+    CROWN_ROTATE = 6;
+    CROWN_PRESS_ROTATE = 7;
+    CROWN_TAP = 8;
+    DPI_SETTINGS = 9;
+    KEYBOARD_SETTINGS = 10;
+    EMBEDDED = 11;
+    KEY_OR_BUTTON = 12;
+    KEYBOARD_BACKLIGHT_UP_SETTINGS = 13;
+    KEYBOARD_BACKLIGHT_DOWN_SETTINGS = 14;
+    DONOTHING = 15;
+  }
+
+  string name = 1;
+  .logi.protocol.macros.Preset.Platform platform = 2;
+  .logi.protocol.macros.Macro macro = 3;
+  repeated string keystroke = 4;
+  .logi.protocol.macros.Preset.CardType cardtype = 5;
+  string tag = 6;
+  bool parameterized = 7;
+}
+
+message Presets {
+  message Category {
+    repeated .logi.protocol.macros.Preset presets = 1;
+  }
+
+  message CategoriesEntry {
+    string key = 1;
+    .logi.protocol.macros.Presets.Category value = 2;
+  }
+
+  repeated .logi.protocol.macros.Presets.CategoriesEntry categories = 1;
+}
+
+message InputSequence {
+  message Component {
+    .logi.protocol.input_tracker.Event.Keyboard keyboard = 1;
+    .logi.protocol.input_tracker.Event.Mouse mouse = 2;
+    .logi.protocol.macros.Macro.Delay delay = 3;
+  }
+
+  message ComponentList {
+    repeated .logi.protocol.macros.InputSequence.Component components = 1;
+  }
+
+  repeated .logi.protocol.macros.InputSequence.ComponentList component_lists = 1;
+  bool use_default_delay = 2;
+  uint32 default_delay = 3;
+  bool show_up_down = 4;
+}
+
+message MacroCollection {
+  repeated .logi.protocol.macros.Macro macro = 1;
+  string id = 2;
+}
+
+message Macros {
+  message Trigger {
+    enum TriggerType {
+      DEVICE = 0;
+      APPLICATION = 1;
+      SYSTEM = 2;
+      RADIAL_MENU = 3;
+      SHORTCUT = 4;
+      CREATIVE_CONSOLE = 5;
+    }
+
+    enum State {
+      OK = 0;
+      DEVICE_NOT_CONNECTED = 1;
+      APPLICATION_PATH_REQUIRED = 2;
+    }
+
+    .logi.protocol.macros.Macros.Trigger.TriggerType type = 1;
+    string icon_path = 2;
+    string slot_id = 3;
+    string device_model = 4;
+    .logi.protocol.devices.Device.Type device_type = 5;
+    string device_name = 6;
+    string slot_name = 7;
+    string profile_id = 8;
+    .logi.protocol.macros.Macros.Trigger.State state = 9;
+    repeated .logi.protocol.input_tracker.Event.Keyboard shortcut_keys = 11;
+    .logi.protocol.applications.Event app_event = 12;
+    optional string folder_nested_key = 10;
+  }
+
+  message ActionsListRequest {
+    .logi.protocol.macros.Macros.ActionType type = 1;
+    optional string app_id = 2;
+  }
+
+  enum ActionType {
+    DELAY = 0;
+    APPLICATION = 1;
+    KEYSTROKE = 2;
+    TEXT = 3;
+    SYSTEM = 4;
+    AI_PROMPT_BUILDER = 5;
+  }
+
+}
+
+message SequenceStatus {
+  string macro_id = 1;
+  .logi.protocol.Result.Code result = 3;
+  optional uint32 sequence_number = 2;
+}
+
+message SharedMacroInfo {
+  message ErrorMessage {
+    .logi.protocol.macros.SharedMacroInfo.ErrorCode error_code = 1;
+    string what = 2;
+  }
+
+  enum ErrorCode {
+    UNKNOWN = 0;
+    NO_SUCH_PATH = 1;
+    FAILED_TO_PARSE = 2;
+    FAILED_TO_WRITE = 3;
+    INCOMPATIBLE_PLATFORM = 4;
+  }
+
+  string macro_id = 1;
+  string directory_path = 2;
+  string file_name = 3;
+}
+
+message AiPromptBuilder {
+  bool enabled = 1;
+}
+

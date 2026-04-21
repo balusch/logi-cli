@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+package logi.protocol.presentation;
+
+message PresentationStatus {
+  bool in_presentation_mode = 1;
+}
+
+message PresentationReport {
+  .logi.protocol.presentation.PresentationStatus status = 1;
+  uint32 process_id = 2;
+  string process_name = 3;
+  string window_title = 4;
+  string app_name = 5;
+  string browser_name = 6;
+  int64 hwnd_audience = 7;
+  .logi.protocol.presentation.PresentationApp presentation_app = 8;
+  uint32 screen_number = 9;
+  string app_version = 10;
+  string browser_version = 11;
+}
+
+message Presentation {
+  bool start = 1;
+  bool stop = 2;
+}
+
+message PresentationScreenRect {
+  uint32 left = 1;
+  uint32 right = 2;
+  uint32 top = 3;
+  uint32 bottom = 4;
+  uint32 screen_index = 5;
+}
+
+enum PresentationApp {
+  none = 0;
+  power_point = 1;
+  adobe_reader = 2;
+  adobe_acrobat = 3;
+  prezi_present_desktop = 4;
+  google_slides_edge = 5;
+  google_slides_chrome = 6;
+  google_slides_firefox = 7;
+  power_point_edge = 8;
+  power_point_chrome = 9;
+  power_point_firefox = 10;
+  prezi_present_edge = 11;
+  prezi_present_chrome = 12;
+  prezi_present_firefox = 13;
+  keynote = 14;
+  preview = 15;
+  safari = 16;
+  power_point_safari = 17;
+  google_slides_safari = 18;
+  prezi_present_safari = 19;
+}
+

@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package logi.protocol.force_sensing;
+
+message ButtonForceSensingCapability {
+  uint32 button_index = 1;
+  uint32 min_force = 2;
+  uint32 default_force = 3;
+  uint32 max_force = 4;
+  uint32 high_force = 5;
+  bool force_change_capability = 6;
+  bool layer_config_capability = 7;
+  uint32 num_thresholds = 8;
+  uint32 default_l2_force = 9;
+}
+
+message ButtonForceSensing {
+  uint32 button_index = 1;
+  uint32 current_force = 2;
+}
+
+message ButtonLayerConfig {
+  uint32 button_index = 1;
+  bool layer1_enabled = 2;
+  bool layer2_enabled = 3;
+}
+
+message ForceSensingCapabilities {
+  repeated .logi.protocol.force_sensing.ButtonForceSensingCapability button_force_sensing_capabilities = 1;
+}
+
+message ForceSensingSettings {
+  repeated .logi.protocol.force_sensing.ButtonForceSensing buttons_force_sensing_settings = 1;
+}
+
+message LayerConfigSettings {
+  repeated .logi.protocol.force_sensing.ButtonLayerConfig buttons_layer_config_settings = 1;
+}
+

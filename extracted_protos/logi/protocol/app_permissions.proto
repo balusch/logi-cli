@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+package logi.protocol.app_permissions;
+
+import "logi/protocol/util.proto";
+
+message Permissions {
+  .logi.protocol.util.BoolValue analytics = 1;
+  .logi.protocol.util.BoolValue flow = 2;
+  .logi.protocol.util.BoolValue sso = 3;
+  .logi.protocol.util.BoolValue update = 4;
+  .logi.protocol.util.BoolValue backlight = 5;
+  .logi.protocol.util.BoolValue logivoice = 6;
+  .logi.protocol.util.BoolValue dfu = 7;
+  .logi.protocol.util.BoolValue aipromptbuilder = 8;
+  .logi.protocol.util.BoolValue device_recommendation = 9;
+  .logi.protocol.util.BoolValue smartactions = 10;
+  .logi.protocol.util.BoolValue actions_ring = 11;
+}
+

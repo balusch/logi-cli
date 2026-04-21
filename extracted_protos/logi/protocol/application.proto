@@ -1,0 +1,45 @@
+syntax = "proto3";
+
+package logi.protocol.application;
+
+import "logi/common_protocol/settings.proto";
+import "logi/protocol/util.proto";
+
+message Configuration {
+  .logi.protocol.util.BoolValue autolaunch = 1;
+  .logi.protocol.util.String language = 2;
+  .logi.protocol.util.BoolValue onboarding_shown = 3;
+  .logi.protocol.util.BoolValue migration_shown = 4;
+  repeated string seen_coach_marks = 5;
+  .logi.protocol.util.String brand = 7;
+  .logi.protocol.util.BoolValue notifications_enabled = 8;
+  .logi.protocol.util.BoolValue settings_loaded_from_backup = 9;
+  repeated .logi.protocol.settings.KeyValue key_value = 10;
+  .logi.protocol.util.BoolValue low_battery_notifications_enabled = 11;
+  .logi.protocol.util.BoolValue lock_notifications_enabled = 12;
+  .logi.protocol.util.BoolValue use_system_language = 13;
+  .logi.protocol.util.String theme = 14;
+  .logi.protocol.util.BoolValue use_system_theme = 15;
+  .logi.protocol.util.BoolValue mic_mute_overlay_enabled = 16;
+  .logi.protocol.util.BoolValue automatic_backup_enabled = 17;
+  repeated .logi.protocol.util.AttributeValue user_voice = 18;
+  .logi.protocol.util.BoolValue macros_onboarding_shown = 19;
+  repeated .logi.protocol.util.AttributeValue macros_user_voice = 20;
+  .logi.protocol.util.BoolValue macros_template_tab_banner_shown = 21;
+  .logi.protocol.util.BoolValue macros_manage_tab_banner_shown = 22;
+  .logi.protocol.util.BoolValue macros_feature_enabled = 23;
+  .logi.protocol.util.BoolValue macros_restore_backup_shown = 24;
+  .logi.protocol.util.String system_notification_click_view = 25;
+  .logi.protocol.util.BoolValue macros_execution_stop_hint_shown = 26;
+  .logi.protocol.util.BoolValue star_rating_notification_enabled = 27;
+  .logi.protocol.util.BoolValue macros_cards_context_menu_shown = 28;
+  .logi.protocol.util.BoolValue macros_add_triggers_allowed = 29;
+  repeated string copied_settings_device_unit_ids = 30;
+  .logi.protocol.util.BoolValue show_mode_notification_enabled = 31;
+}
+
+message PermissionsBackup {
+  .logi.protocol.util.BoolValue update = 1;
+  .logi.protocol.util.BoolValue backlight = 2;
+}
+

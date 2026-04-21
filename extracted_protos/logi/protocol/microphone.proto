@@ -1,0 +1,198 @@
+syntax = "proto3";
+
+package logi.protocol.microphone;
+
+message Settings {
+  .logi.protocol.microphone.PolarPattern.Support polar_pattern = 2;
+  .logi.protocol.microphone.MicrophoneGain microphone_gain = 3;
+}
+
+message MicrophoneGain {
+  float gain = 1;
+}
+
+message VoiceEQ {
+  message Band {
+    float frequency = 1;
+    float gain = 2;
+    float width = 3;
+  }
+
+  bool enabled = 1;
+  .logi.protocol.microphone.VoiceEQ.Band low = 2;
+  .logi.protocol.microphone.VoiceEQ.Band mid = 3;
+  .logi.protocol.microphone.VoiceEQ.Band high = 4;
+}
+
+message DePopper {
+  bool enabled = 1;
+  float frequency = 2;
+}
+
+message NoiseReduction {
+  bool enabled = 1;
+  float release = 2;
+  float sensitivity = 3;
+  float bias = 4;
+  float attenuation_max = 5;
+}
+
+message Expander {
+  bool enabled = 1;
+  float attack = 2;
+  float release = 3;
+  float hysteresis = 4;
+  float ratio = 5;
+  float threshold = 6;
+  bool threshold_auto_enabled = 7;
+  float threshold_auto_sensibility = 8;
+  float attenuation_max = 9;
+}
+
+message DeEsser {
+  bool enabled = 1;
+  float attack = 2;
+  float release = 3;
+  float ratio = 4;
+  float threshold = 5;
+  float frequency = 6;
+}
+
+message Compressor {
+  bool enabled = 1;
+  float attack = 2;
+  float release = 3;
+  float ratio = 4;
+  float threshold = 5;
+  float makeup = 6;
+}
+
+message Limiter {
+  float boost = 1;
+  float attack = 2;
+  float release = 3;
+}
+
+message BlueVoice {
+  message Description {
+    string name = 1;
+    string source_id = 2;
+    string tag = 3;
+  }
+
+  message Meter {
+    message Watch {
+      string endpoint_id = 1;
+      bool micopt_input_enabled = 2;
+      bool micopt_output_enabled = 3;
+      bool expander_gain_enabled = 4;
+      bool deesser_gain_enabled = 5;
+      bool compressor_gain_enabled = 6;
+      bool limiter_output_enabled = 7;
+    }
+
+    message Data {
+      enum Type {
+        INVALID = 0;
+        MICOPT_INPUT = 1;
+        MICOPT_OUTPUT = 2;
+        EXPANDER_GAIN = 3;
+        DEESSER_GAIN = 4;
+        COMPRESSOR_GAIN = 5;
+        LIMITER_OUTPUT = 6;
+      }
+
+      .logi.protocol.microphone.BlueVoice.Meter.Data.Type type = 1;
+      float average = 2;
+      float peak = 3;
+    }
+
+    string endpoint_id = 1;
+    bool enabled = 2;
+  }
+
+  message Settings {
+    float balance = 1;
+    float volume = 2;
+    .logi.protocol.microphone.VoiceEQ voice_eq = 3;
+    .logi.protocol.microphone.DePopper de_popper = 4;
+    .logi.protocol.microphone.NoiseReduction noise_reduction = 5;
+    .logi.protocol.microphone.Expander expander = 6;
+    .logi.protocol.microphone.DeEsser de_esser = 7;
+    .logi.protocol.microphone.Compressor compressor = 8;
+    .logi.protocol.microphone.Limiter limiter = 9;
+    float input_gain = 10;
+  }
+
+  message Update {
+    string endpoint_id = 1;
+    bool enabled = 2;
+    .logi.protocol.microphone.BlueVoice.Settings settings = 3;
+  }
+
+  .logi.protocol.microphone.BlueVoice.Description description = 1;
+  .logi.protocol.microphone.BlueVoice.Settings settings = 2;
+}
+
+message RecordPlayback {
+  enum Action {
+    UNKNOWN_ACTION = 0;
+    RECORD = 1;
+    STOP_RECORDING = 2;
+    PLAYBACK = 3;
+    STOP_PLAYBACK = 4;
+    STOP = 5;
+  }
+
+  enum State {
+    UNKNOWN_STATE = 0;
+    RECORDING = 1;
+    STOPPED = 2;
+    PLAYING = 3;
+  }
+
+  .logi.protocol.microphone.RecordPlayback.Action action = 1;
+  .logi.protocol.microphone.RecordPlayback.State state = 2;
+  float length = 3;
+  float offset = 4;
+}
+
+message MicrophoneSettings {
+  .logi.protocol.microphone.PolarPattern.Support polar_pattern = 1;
+}
+
+message PolarPattern {
+  message Support {
+    .logi.protocol.microphone.PolarPattern.Type id = 1;
+  }
+
+  enum Type {
+    INVALID = 0;
+    POLAR_PATTERN_STEREO = 1;
+    POLAR_PATTERN_CARDIOID = 2;
+    POLAR_PATTERN_BIDIRECTIONAL = 3;
+    POLAR_PATTERN_OMNI = 4;
+  }
+
+}
+
+message MicMode {
+  message Support {
+    .logi.protocol.microphone.MicMode.Type id = 1;
+  }
+
+  enum Type {
+    UNKNOWN = 0;
+    MICROPHONE_GAIN = 1;
+    HEADPHONE_LEVEL = 2;
+    BLEND = 3;
+  }
+
+}
+
+message Device {
+  .logi.protocol.microphone.PolarPattern.Support polar_pattern = 1;
+  .logi.protocol.microphone.MicMode.Support mic_mode = 2;
+  string id = 3;
+}
+

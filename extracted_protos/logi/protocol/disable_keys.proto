@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package logi.protocol.disable_keys;
+
+message DisableKeysCapabilities {
+  bool winKey = 1;
+  bool insertKey = 2;
+  bool scrollLockKey = 3;
+  bool numLockKey = 4;
+  bool capsLockKey = 5;
+}
+
+message DisableKeysSettings {
+  bool disableWinKey = 1;
+  bool disableInsertKey = 2;
+  bool disableScrollLockKey = 3;
+  bool disableNumLockKey = 4;
+  bool disableCapsLockKey = 5;
+}
+
+message DisableKeys {
+  message State {
+    .logi.protocol.disable_keys.DisableKeysSettings disable_keys_settings = 1;
+  }
+
+  message NewState {
+    .logi.protocol.disable_keys.DisableKeysSettings disable_keys_settings = 1;
+  }
+
+  .logi.protocol.disable_keys.DisableKeysCapabilities disable_keys_capabilities = 1;
+}
+

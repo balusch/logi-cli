@@ -1,0 +1,108 @@
+syntax = "proto3";
+
+package logi.protocol.applications;
+
+message Command {
+  string name = 1;
+  string category = 2;
+  string card_id = 3;
+}
+
+message Application {
+  string database_id = 1;
+  string name = 2;
+  string bundle_id = 3;
+  uint32 version = 4;
+  string install_time = 5;
+  string last_run_time = 6;
+  string application_path = 7;
+  string application_folder = 8;
+  bytes poster = 10;
+  bytes background = 11;
+  uint32 process_id = 13;
+  uint32 session_id = 14;
+  string command_line = 15;
+  string application_id = 16;
+  repeated .logi.protocol.applications.Command commands = 17;
+  repeated string require_restart_paths = 18;
+  bool is_custom = 19;
+  string poster_url = 20;
+  string profile_url = 21;
+  bool is_disabled = 22;
+  bool is_installed = 23;
+  repeated string application_paths_list = 24;
+  string poster_path = 25;
+  bool is_uwp_application = 27;
+  optional .logi.protocol.applications.AdditionalApplicationData additional_application_data = 26;
+}
+
+message Event {
+  enum Type {
+    INVALID = 0;
+    APPLICATION_START = 1;
+    APPLICATION_STOP = 2;
+    APPLICATION_FOCUS = 3;
+    APPLICATION_DISCOVERED = 4;
+    SCAN_START = 5;
+    SCAN_STOP = 6;
+  }
+
+  .logi.protocol.applications.Event.Type type = 1;
+  .logi.protocol.applications.Application application = 2;
+  string time = 3;
+  string session_time = 4;
+}
+
+message Applications {
+  repeated .logi.protocol.applications.Application applications = 1;
+}
+
+message ApplicationId {
+  string application_id = 1;
+}
+
+message ApplicationInfo {
+  string application_id = 1;
+  string name = 2;
+  string poster_url = 3;
+  string profile_url = 4;
+}
+
+message ApplicationInfos {
+  repeated .logi.protocol.applications.ApplicationInfo application_infos = 1;
+}
+
+message LogiApplicationInfo {
+  string app_version = 2;
+  string json_app_name = 3;
+}
+
+message LogiApplicationInfos {
+  repeated .logi.protocol.applications.LogiApplicationInfo logi_application_infos = 1;
+}
+
+message WeChatApplicationData {
+  message WeChatEmoji {
+    message EmojiInfo {
+      string emoji_data = 1;
+    }
+
+    repeated .logi.protocol.applications.WeChatApplicationData.WeChatEmoji.EmojiInfo info_list = 1;
+    string locale = 2;
+  }
+
+  repeated .logi.protocol.applications.WeChatApplicationData.WeChatEmoji wechat_emoji = 1;
+}
+
+message AdditionalApplicationData {
+  oneof additional_application_data {
+    .logi.protocol.applications.WeChatApplicationData wechat_data = 2;
+  }
+  optional string application_id = 1;
+}
+
+message EventResult {
+  .logi.protocol.applications.Event event = 1;
+  bool result = 2;
+}
+

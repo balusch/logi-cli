@@ -1,0 +1,297 @@
+syntax = "proto3";
+
+package logi.protocol.audio;
+
+message Capabilities {
+  bool dts_supported = 1;
+  bool dolby_supported = 2;
+  bool denoiser_supported = 3;
+  bool onboard_eq_supported = 4;
+  bool onboard_pro_eq_supported = 5;
+  bool dts_hx2e_supported = 6;
+  bool pro_eq_supported = 7;
+  bool hardware_noise_reduction_supported = 9;
+  bool render = 10;
+  bool capture = 11;
+  bool surround_sound = 12;
+  bool hid_mic = 13;
+}
+
+message Acoustics {
+  .logi.protocol.audio.SurroundSound surround = 1;
+  .logi.protocol.audio.AutomaticNoiseReduction automatic_noise_reduction = 2;
+  .logi.protocol.audio.Volume sidetone = 3;
+}
+
+message AutomaticNoiseReduction {
+  bool enabled = 1;
+}
+
+message Equalizer {
+  enum Device {
+    INVALID_DEVICE = 0;
+    HEADSET = 1;
+    SPEAKER = 2;
+  }
+
+  enum Type {
+    INVALID = 0;
+    NONE = 1;
+    SIMPLE = 2;
+    ADVANCED = 3;
+  }
+
+  repeated float simple = 1;
+  repeated float advanced = 2;
+  .logi.protocol.audio.Equalizer.Device device_type = 3;
+  .logi.protocol.audio.Equalizer.Type type = 4;
+  string name = 5;
+  string tag = 6;
+  string id = 7;
+  string source_id = 8;
+}
+
+message ProEqualizer {
+  enum Device {
+    INVALID_DEVICE = 0;
+    HEADSET = 1;
+  }
+
+  enum Type {
+    INVALID = 0;
+    NONE = 1;
+    PRO = 2;
+  }
+
+  repeated float bands = 1;
+  .logi.protocol.audio.ProEqualizer.Device device_type = 2;
+  .logi.protocol.audio.ProEqualizer.Type type = 3;
+  string name = 4;
+  string tag = 5;
+  string id = 6;
+  string source_id = 7;
+}
+
+message ElevatedAcoustics {
+  .logi.protocol.audio.Equalizer equalizer = 1;
+  .logi.protocol.audio.SurroundSound surround = 2;
+  .logi.protocol.audio.AutomaticNoiseReduction automatic_noise_reduction = 3;
+  string endpoint_id = 4;
+}
+
+message EqualizerList {
+  repeated .logi.protocol.audio.Equalizer preset = 1;
+}
+
+message Info {
+  message EqInfo {
+    repeated int32 bands_hertz = 1;
+    int32 db_min = 2;
+    int32 db_max = 3;
+  }
+
+  bool dts_available = 1;
+  bool dolby_available = 2;
+  .logi.protocol.audio.Info.EqInfo eq = 3;
+}
+
+message Volume {
+  enum Channel {
+    INVALID = 0;
+    OUTPUT = 1;
+    INPUT = 2;
+    SIDETONE = 3;
+    BASS = 4;
+  }
+
+  bool muted = 1;
+  float gain = 2;
+  .logi.protocol.audio.Volume.Channel channel = 3;
+}
+
+message SurroundSound {
+  message ChannelVolume {
+    .logi.protocol.audio.SurroundSound.Channel channel = 1;
+    float gain = 2;
+  }
+
+  enum Channel {
+    INVALID = 0;
+    FRONT_LEFT = 1;
+    FRONT_RIGHT = 2;
+    CENTER = 3;
+    SUBWOOFER = 4;
+    REAR_LEFT = 5;
+    REAR_RIGHT = 6;
+    SIDE_LEFT = 7;
+    SIDE_RIGHT = 8;
+  }
+
+  enum Mode {
+    MODE_INVALID = 0;
+    DOLBY = 1;
+    DTS = 2;
+  }
+
+  enum Enabled {
+    ENABLED_INVALID = 0;
+    ON = 1;
+    OFF = 2;
+  }
+
+  repeated .logi.protocol.audio.SurroundSound.ChannelVolume volume = 1;
+  .logi.protocol.audio.SurroundSound.Enabled enabled = 2;
+  .logi.protocol.audio.SurroundSound.Mode mode = 3;
+  .logi.protocol.audio.DTSSettings dts = 4;
+  .logi.protocol.audio.DolbySettings dolby = 5;
+}
+
+message DTSSettings {
+  enum DTSVersion {
+    DTS_INVALID = 0;
+    HEADSET = 1;
+    SPEAKER = 2;
+  }
+
+  enum HeadsetRoomPreset {
+    HEADSET_ROOM_INVALID = 0;
+    DTS_STANDARD = 1;
+    FPS = 2;
+    SIGNATURE_STUDIO = 3;
+    HX2E_ENTERTAINMENT = 11;
+    HX2E_GAMING = 12;
+    HX2E_SPORTS = 13;
+  }
+
+  enum SpeakerRoomPreset {
+    SPEAKER_ROOM_INVALID = 0;
+    GAMING = 1;
+    MOVIE = 2;
+  }
+
+  enum StereoMode {
+    MODE_INVALID = 0;
+    SS_FRONT = 1;
+    SS_WIDE = 2;
+    HX2E_OFF = 11;
+    HX2E_FRONT = 12;
+    HX2E_WIDE = 13;
+    HX2E_TRADITIONAL = 14;
+  }
+
+  .logi.protocol.audio.DTSSettings.DTSVersion dts_version = 1;
+  .logi.protocol.audio.DTSSettings.HeadsetRoomPreset headset_room = 2;
+  .logi.protocol.audio.DTSSettings.StereoMode stereo_mode = 3;
+  .logi.protocol.audio.DTSSettings.SpeakerRoomPreset speaker_room = 4;
+}
+
+message DolbySettings {
+  enum Mode {
+    INVALID = 0;
+    MOVIE = 1;
+    MUSIC = 2;
+  }
+
+  .logi.protocol.audio.DolbySettings.Mode mode = 1;
+}
+
+message AudioEndpoint {
+  enum Flow {
+    FLOW_IN = 0;
+    FLOW_OUT = 1;
+  }
+
+  enum Role {
+    UNKNOWN_ROLE = 0;
+    DEFAULT = 1;
+    COMMUNICATIONS = 2;
+    BOTH = 3;
+  }
+
+  string friendly_name = 1;
+  .logi.protocol.audio.AudioEndpoint.Flow flow = 2;
+  float volume = 3;
+  bool muted = 4;
+  string audio_id = 5;
+  .logi.protocol.audio.AudioEndpoint.Role role = 6;
+}
+
+message AudioEndpointList {
+  repeated .logi.protocol.audio.AudioEndpoint audio_endpoint = 1;
+}
+
+message AudioSession {
+  string friendly_name = 1;
+  int32 session_number = 2;
+  string session_instance = 3;
+  float volume = 4;
+  bool muted = 5;
+  uint64 process_id = 6;
+  string audio_id = 7;
+}
+
+message AudioSessionList {
+  repeated .logi.protocol.audio.AudioSession audio_session = 1;
+}
+
+message AudioVolumeNotification {
+  string friendly_name = 1;
+  string audio_id = 2;
+  float volume = 3;
+  bool muted = 4;
+}
+
+message AudioSessionNotification {
+  int32 session_number = 1;
+  string instance_id = 2;
+  float volume = 3;
+  bool muted = 4;
+}
+
+message AudioSessionArrival {
+  string friendly_name = 1;
+}
+
+message AudioDeviceNotification {
+  enum Type {
+    UNKNOWN_TYPE = 0;
+    DEFAULT_CHANGE = 1;
+    DEVICE_ADDED = 2;
+    DEVICE_REMOVED = 3;
+    STATE_CHANGE = 4;
+    PROPERTY_CHANGE = 5;
+  }
+
+  enum Flow {
+    UNKNOWN_FLOW = 0;
+    FLOW_IN = 1;
+    FLOW_OUT = 2;
+  }
+
+  enum State {
+    UNKNOWN_STATE = 0;
+    DEVICE_STATE_ACTIVE = 1;
+    DEVICE_STATE_DISABLED = 2;
+    DEVICE_STATE_NOTPRESEN = 3;
+    DEVICE_STATE_UNPLUGGED = 4;
+  }
+
+  enum Role {
+    UNKNOWN_ROLE = 0;
+    ECONSOLE = 1;
+    EMULTIMEDIA = 2;
+    ECOMMUNICATIONS = 3;
+  }
+
+  .logi.protocol.audio.AudioDeviceNotification.Type message_type = 1;
+  string friendly_name = 2;
+  .logi.protocol.audio.AudioDeviceNotification.Flow flow = 3;
+  string audio_id = 4;
+  .logi.protocol.audio.AudioDeviceNotification.State state = 5;
+  .logi.protocol.audio.AudioDeviceNotification.Role role = 6;
+}
+
+message AudioPlayerState {
+  bool is_playing = 1;
+}
+

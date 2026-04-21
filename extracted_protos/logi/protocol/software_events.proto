@@ -1,0 +1,40 @@
+syntax = "proto3";
+
+package logi.protocol.software_events;
+
+import "logi/protocol/devices.proto";
+import "logi/protocol/profiles_v2.proto";
+
+message SlotInfo {
+  string id = 1;
+  string name = 2;
+}
+
+message SoftwareEventsSlotsData {
+  .logi.protocol.software_events.SlotType slot_type = 1;
+  repeated .logi.protocol.software_events.SlotInfo slot_infos = 2;
+}
+
+message SoftwareEventsSlotsDataMap {
+  repeated .logi.protocol.software_events.SoftwareEventsSlotsData data = 1;
+}
+
+message MacroInfoTriggerEvent {
+  .logi.protocol.devices.TriggerEvent trigger_info = 1;
+  .logi.protocol.profiles_v2.MacroInfo macro_info = 2;
+}
+
+message CardTriggerEvent {
+  .logi.protocol.devices.TriggerEvent trigger_info = 1;
+  .logi.protocol.profiles_v2.Card card = 2;
+}
+
+enum SlotType {
+  UNKNOWN = 0;
+  SHORTCUT = 1;
+  SYSTEM = 2;
+  APPLICATION = 3;
+  TRY_MACRO = 4;
+  LPS = 5;
+}
+

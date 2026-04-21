@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+package logi.protocol.crown;
+
+message CrownMode {
+  enum RatchetMode {
+    INVALID = 0;
+    FREEWHEEL = 1;
+    RATCHET = 2;
+  }
+
+  .logi.protocol.crown.CrownMode.RatchetMode ratchet = 1;
+}
+
+message Settings {
+  .logi.protocol.crown.CrownMode crown_mode = 1;
+}
+
+message CrownGestureEvent {
+  enum GestureType {
+    NONE = 0;
+    SINGLE_TAP = 1;
+    DOUBLE_TAP = 2;
+  }
+
+  .logi.protocol.crown.CrownGestureEvent.GestureType gesture_type = 1;
+  string device_id = 2;
+  string device_prefix = 3;
+}
+
+message CrownTouchEvent {
+  enum State {
+    INACTIVE = 0;
+    START = 1;
+    ACTIVE = 2;
+    STOP = 3;
+  }
+
+  .logi.protocol.crown.CrownTouchEvent.State touch_state = 1;
+  string device_id = 2;
+  string device_prefix = 3;
+}
+
+message CrownPressEvent {
+  string device_id = 1;
+  string device_prefix = 2;
+}
+
+message CrownTurnEvent {
+  enum RotationState {
+    INACTIVE = 0;
+    START = 1;
+    ACTIVE = 2;
+    STOP = 3;
+  }
+
+  .logi.protocol.crown.CrownTurnEvent.RotationState rotation_state = 1;
+  int32 rotation_slot = 2;
+  int32 rotation_ratchet = 3;
+  int32 rotation_speed = 4;
+  bool is_press_and_turn = 5;
+  string device_id = 6;
+  string device_prefix = 7;
+}
+
+enum CrownButtonState {
+  INACTIVE = 0;
+  START = 1;
+  SHORT = 2;
+  LONG_TRIGGER = 3;
+  LONG = 4;
+  STOP = 5;
+}
+

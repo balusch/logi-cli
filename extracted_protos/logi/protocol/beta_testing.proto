@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package logi.protocol.beta_testing;
+
+message Features {
+  message FeaturesEntry {
+    string key = 1;
+    bool value = 2;
+  }
+
+  repeated .logi.protocol.beta_testing.Features.FeaturesEntry features = 1;
+}
+

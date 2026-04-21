@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+package logi.protocol.system_events;
+
+import "logi/protocol/siminput.proto";
+
+message HotkeyResult {
+  .logi.protocol.siminput.Input.Keyboard hotkey_keyboard = 1;
+  bool result = 2;
+}
+

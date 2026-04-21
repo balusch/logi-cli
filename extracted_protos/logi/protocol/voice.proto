@@ -1,0 +1,82 @@
+syntax = "proto3";
+
+package logi.protocol.voice;
+
+import "google/protobuf/wrappers.proto";
+import "google/protobuf/timestamp.proto";
+
+message StringList {
+  repeated string value = 1;
+}
+
+message DictationLanguages {
+  .logi.protocol.voice.StringList languages = 1;
+  string selected_language = 2;
+}
+
+message TranslationLanguages {
+  message LanguagesMultimapEntry {
+    string key = 1;
+    .logi.protocol.voice.StringList value = 2;
+  }
+
+  repeated .logi.protocol.voice.TranslationLanguages.LanguagesMultimapEntry languages_multimap = 1;
+  string selected_translate_from_language = 2;
+  string selected_translate_to_language = 3;
+}
+
+message TranslationConfiguration {
+  string translate_from = 1;
+  string translate_to = 2;
+}
+
+message DictationConfiguration {
+  string dictation_language = 1;
+}
+
+message MicrophoneConfiguration {
+  string microphone = 1;
+}
+
+message MicrophoneList {
+  .logi.protocol.voice.StringList available_microphones_list = 1;
+  string microphone_chosen = 2;
+}
+
+message LongSpeechConfiguration {
+  bool enabled = 1;
+}
+
+message SmoothModeConfiguration {
+  bool enabled = 1;
+}
+
+message VoiceSearchConfiguration {
+  bool enabled = 1;
+}
+
+message PunctuationConfiguration {
+  string mode = 1;
+}
+
+message VocabularyConfiguration {
+  string type = 1;
+}
+
+message PunctuationModes {
+  .logi.protocol.voice.StringList modes = 1;
+  string selected_mode = 2;
+}
+
+message VocabularyTypes {
+  .logi.protocol.voice.StringList types = 1;
+  string selected_type = 2;
+}
+
+message VoiceToggleInfo {
+  string pid = 1;
+  string serial = 2;
+  string extId = 3;
+  string defTrigger = 4;
+}
+

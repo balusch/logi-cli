@@ -1,0 +1,645 @@
+syntax = "proto3";
+
+package logi.protocol.profiles_v2;
+
+import "logi/protocol/applications.proto";
+import "logi/protocol/backlight.proto";
+import "logi/protocol/devices.proto";
+import "logi/protocol/devices_support.proto";
+import "logi/protocol/disable_keys.proto";
+import "logi/protocol/force_sensing.proto";
+import "logi/protocol/haptics.proto";
+import "logi/protocol/highlights.proto";
+import "logi/protocol/illumination_light.proto";
+import "logi/protocol/keyboard.proto";
+import "logi/protocol/macros_categories.proto";
+import "logi/protocol/macros.proto";
+import "logi/protocol/media.proto";
+import "logi/protocol/mouse.proto";
+import "logi/protocol/presentation.proto";
+import "logi/protocol/presentation_timers.proto";
+import "logi/protocol/presenter.proto";
+import "logi/protocol/radial_menu.proto";
+import "logi/protocol/touchpad.proto";
+import "logi/protocol/util.proto";
+import "logi/protocol/crown.proto";
+
+message Profile {
+  message Slots {
+    message Cards {
+      message SlotCardsEntry {
+        string key = 1;
+        .logi.protocol.profiles_v2.Card value = 2;
+      }
+
+      string profile_id = 1;
+      repeated .logi.protocol.profiles_v2.Profile.Slots.Cards.SlotCardsEntry slot_cards = 2;
+    }
+
+    string profile_id = 1;
+    repeated string slots = 2;
+  }
+
+  string id = 1;
+  string name = 2;
+  string application_id = 3;
+  bool active_for_application = 4;
+  repeated .logi.protocol.profiles_v2.Assignment assignments = 5;
+  string base_profile_id = 9;
+}
+
+message Profiles {
+  repeated .logi.protocol.profiles_v2.Profile profiles = 1;
+}
+
+message GestureInfo {
+  message Threshold {
+    uint32 minimum_sensitivity_threshold = 1;
+    uint32 maximum_sensitivity_threshold = 2;
+    .logi.protocol.profiles_v2.GestureInfo.Units units = 3;
+  }
+
+  message ActionDurationMs {
+    uint32 minimum_sensitivity_action_duration_ms = 1;
+    uint32 maximum_sensitivity_action_duration_ms = 2;
+  }
+
+  message AxisInfo {
+    message Bounds {
+      double min = 1;
+      double max = 2;
+      double step = 3;
+    }
+
+    bool invertable = 1;
+    bool speed_control = 2;
+    bool auto_repeat = 3;
+    uint32 pause_between_actions_ms = 4;
+    uint32 action_duration_ms = 5;
+    double speed_factor = 6;
+    .logi.protocol.profiles_v2.GestureInfo.Threshold start_threshold = 7;
+    .logi.protocol.profiles_v2.GestureInfo.Threshold action_threshold = 8;
+    .logi.protocol.profiles_v2.GestureInfo.ActionDurationMs action_duration = 9;
+    bool step_based = 10;
+    .logi.protocol.profiles_v2.GestureInfo.AxisInfo.Bounds bounds = 11;
+  }
+
+  message Direction {
+    .logi.protocol.touchpad.GestureDirection direction = 1;
+    bool enabled = 2;
+  }
+
+  message ParametersEntry {
+    string key = 1;
+    string value = 2;
+  }
+
+  enum GestureImplementation {
+    GENERIC = 0;
+    CUSTOM_APPLICATION_NAVIGATION = 1;
+    CUSTOM_ZOOM_ROTATE = 2;
+    CUSTOM_PAN = 3;
+    CUSTOM_SWITCH_DESKTOPS = 4;
+    CUSTOM_HORIZONTAL_SCROLL = 5;
+    CUSTOM_VOLUME_CONTROL = 6;
+    CUSTOM_ZOOM_IN_OUT = 7;
+    CUSTOM_DO_NOTHING = 8;
+    CUSTOM_SWIPE_PAGES = 9;
+    CUSTOM_INTEGRATION_THUMBWHEEL = 10;
+    CUSTOM_PHOTOSHOP_ZOOM_AT_CURSOR = 11;
+    CUSTOM_INTEGRATION_PHOTOSHOP_SLOWER_THUMBWHEEL = 12;
+    CUSTOM_PAN_EXCEL = 13;
+    CUSTOM_PAN_WORD = 14;
+    CUSTOM_PAN_POWERPOINT = 15;
+    CUSTOM_PAN_PREMIERE_PRO = 16;
+    CUSTOM_INTEGRATION_PREMIERE_PRO_FASTER_THUMBWHEEL = 17;
+    CUSTOM_PAN_FINAL_CUT_PRO = 18;
+    CUSTOM_APP_EXPOSE_MISSION_CONTROL = 19;
+    CUSTOM_NOTIFICATION_CENTER = 20;
+    CUSTOM_SHOW_DESKTOP_LAUCHPAD = 21;
+    CUSTOM_ROTATE = 22;
+    CUSTOM_ZOOM_IN_OUT_TOUCHPAD = 23;
+    CUSTOM_SCROLL_TOUCHPAD = 24;
+    CUSTOM_SWIPE_PAGES_TOUCHPAD = 25;
+    CUSTOM_SMART_ZOOM_TOUCHPAD = 26;
+    CUSTOM_LOOK_UP_TOUCHPAD = 27;
+    CUSTOM_STOP_TAP_TOUCHPAD = 28;
+    CUSTOM_PRESENTER_VOLUME_CONTROL = 29;
+    CUSTOM_PRESENTER_SCROLL = 30;
+    CUSTOM_HIGHLIGHTS = 31;
+    CUSTOM_INTEGRATION_CROWN = 32;
+  }
+
+  enum Units {
+    DEVICE = 0;
+    DEGREES = 1;
+  }
+
+  .logi.protocol.profiles_v2.GestureInfo.AxisInfo x = 1;
+  .logi.protocol.profiles_v2.GestureInfo.AxisInfo y = 2;
+  bool direction_locked = 3;
+  .logi.protocol.profiles_v2.GestureInfo.GestureImplementation implementation = 4;
+  bool prevent_delayed_termination = 5;
+  uint32 custom_gesture_action_duration = 6;
+  string integration_id = 7;
+  string action_id = 8;
+  repeated .logi.protocol.profiles_v2.GestureInfo.ParametersEntry parameters = 9;
+  repeated .logi.protocol.profiles_v2.GestureInfo.Direction directions = 10;
+}
+
+message TouchpadGestureInfo {
+  string slot_id = 1;
+  .logi.protocol.profiles_v2.GestureInfo gesture_info = 2;
+}
+
+message Card {
+  message ChangePointerSpeed {
+    message PointerSpeedsEntry {
+      string key = 1;
+      float value = 2;
+    }
+
+    string active = 1;
+    repeated .logi.protocol.profiles_v2.Card.ChangePointerSpeed.PointerSpeedsEntry pointer_speeds = 2;
+    bool high_resolution_sensor_active = 3;
+  }
+
+  message Icons {
+    string uri = 1;
+    repeated string icons = 2;
+  }
+
+  message UserIntefaceSettings {
+    optional string value_format = 1;
+    optional string color_scheme = 2;
+  }
+
+  message NestedCardsEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.Card value = 2;
+  }
+
+  enum Attribute {
+    INVALID = 0;
+    MACRO_PLAYBACK = 1;
+    MOUSE_SETTINGS = 4;
+    MOUSE_THUMB_WHEEL_SETTINGS = 16;
+    MOUSE_SCROLL_WHEEL_SETTINGS = 17;
+    ADAPTER_2WAYS = 18;
+    ADAPTER_4WAYS = 19;
+    KEYBOARD_SETTINGS = 20;
+    GESTURE = 21;
+    BACKLIGHTING_SETTINGS = 22;
+    FN_INVERSION_SETTINGS = 23;
+    ONE_OF = 24;
+    MACRO_REF = 25;
+    ADAPTER_CROWN = 26;
+    VIRTUAL_PRECISION_MODE = 27;
+    DISABLE_KEYS_SETTINGS = 28;
+    DISABLE_KEYS_CAPABILITIES = 29;
+    ILLUMINATION_LIGHT_SETTINGS = 30;
+    CAMERA_PREVIEW_SETTINGS = 31;
+    TOUCHPAD_SETTINGS = 32;
+    TOUCHPAD_ACTION_GESTURE_MAP = 33;
+    FOLDER = 34;
+    BRIGHTNESS_SETTINGS = 35;
+    WEBCAM_CAMERA_SETTINGS = 36;
+    WEBCAM_VIDEO_SETTINGS = 37;
+    WEBCAM_GLOBAL_SETTINGS = 38;
+    CONTEXTUAL_ACTION = 39;
+    START_PRESENTATION = 40;
+    FOCUS_SCREEN = 41;
+    PRESENTER_SETTINGS = 42;
+    WEBCAM_CROP_SETTINGS = 43;
+    WEBCAM_FOCUS_SETTINGS = 44;
+    SOFTWARE_EVENT_SHORTCUT = 45;
+    CHANGE_HIGHLIGHT = 46;
+    PRESENTATION_TIMER_SETTINGS = 47;
+    SOFTWARE_EVENT_TRY_MACRO = 48;
+    SOFTWARE_EVENT_LPS = 49;
+    SOFTWARE_EVENT_APPLICATION = 50;
+    WHEEL_MODE_SHIFT = 51;
+    WEBCAM_MICROPHONE_SETTINGS = 52;
+    HAPTIC_SETTINGS = 53;
+    FORCE_SENSING_SETTINGS = 54;
+    CROWN_MODE_SETTINGS = 55;
+    ADAPTER_CROWN_TURN = 56;
+    ADAPTER_CROWN_PRESS_TURN = 57;
+    ADAPTER_CROWN_PRESS = 58;
+    TRIGGER_WAVEFORM = 59;
+    HAPTIC_PROPERTIES = 60;
+    SPECIAL_KEYS_DIVERT_STATE = 61;
+    PLAY_BREATHING_EXERCISE = 62;
+  }
+
+  enum State {
+    READY = 0;
+    APPLICATION_PATH_REQUIRED = 1;
+    PLUGIN_INSTALLATION_REQUIRED = 2;
+    AI_PROMPT_BUILDER_ENABLING_REQUIRED = 3;
+    DEVICE_NOT_CONNECTED = 4;
+    HAPTIC_ENABLING_REQUIRED = 5;
+  }
+
+  string id = 1;
+  string name = 2;
+  .logi.protocol.profiles_v2.Card.Attribute attribute = 3;
+  bool read_only = 6;
+  bool execute_on_profile_change = 7;
+  .logi.protocol.macros.Macro macro = 8;
+  .logi.protocol.mouse.Settings mouse_settings = 11;
+  string selected_nested_card = 12;
+  repeated .logi.protocol.profiles_v2.Card.NestedCardsEntry nested_cards = 13;
+  repeated string nested_cards_order = 14;
+  .logi.protocol.mouse.ThumbWheelSettings mouse_thumb_wheel_settings = 25;
+  .logi.protocol.mouse.ScrollWheelSettings mouse_scroll_wheel_settings = 26;
+  .logi.protocol.keyboard.KeyboardSettings keyboard_settings = 30;
+  .logi.protocol.backlight.Settings backlighting_settings = 34;
+  .logi.protocol.devices.FnInversionSettings fn_inversion_settings = 35;
+  .logi.protocol.profiles_v2.Card.ChangePointerSpeed change_pointer_speed = 36;
+  .logi.protocol.mouse.PrecisionMode precision_mode = 37;
+  .logi.protocol.disable_keys.DisableKeysSettings disable_keys_settings = 38;
+  .logi.protocol.disable_keys.DisableKeysCapabilities disable_keys_capabilities = 39;
+  .logi.protocol.illumination_light.LightSettings illumination_light_settings = 40;
+  .logi.protocol.illumination_light.CameraPreview camera_preview_settings = 41;
+  .logi.protocol.profiles_v2.Card.State state = 42;
+  .logi.protocol.touchpad.Settings touchpad_settings = 43;
+  .logi.protocol.touchpad.ActionGestureMapping touchpad_action_gesture_map = 44;
+  .logi.protocol.devices.DeviceBrightness brightness_settings = 45;
+  .logi.protocol.profiles_v2.Card.Icons icons = 46;
+  .logi.protocol.profiles_v2.Card.UserIntefaceSettings ui_settings = 47;
+  bool require_focus = 48;
+  .logi.protocol.devices.Webcam.CameraSettingsGroup camera_settings_group = 49;
+  .logi.protocol.devices.Webcam.VideoSettingsGroup video_settings_group = 50;
+  .logi.protocol.devices.Webcam.GlobalSettings webcam_global_settings = 51;
+  .logi.protocol.presentation.Presentation presentation = 52;
+  .logi.protocol.presenter.Settings presenter_settings = 53;
+  .logi.protocol.devices.Webcam.CropSettingsGroup crop_settings_group = 54;
+  .logi.protocol.devices.Webcam.FocusSettingsGroup focus_settings_group = 55;
+  .logi.protocol.highlights.FocusScreen focus_screen = 56;
+  .logi.protocol.highlights.ChangeHighlight change_highlight = 57;
+  .logi.protocol.highlights.HighlightsSettings highlights_settings = 58;
+  .logi.protocol.presentation_timers.TimerSettings timer_settings = 59;
+  .logi.protocol.devices.Webcam.MicrophoneSettingsGroup microphone_settings_group = 60;
+  .logi.protocol.haptics.HapticSettings haptic_settings = 61;
+  .logi.protocol.force_sensing.ForceSensingSettings force_sensing_settings = 62;
+  .logi.protocol.crown.Settings crown_mode_settings = 63;
+  .logi.protocol.haptics.TriggerWaveformExecute waveform_info = 64;
+  .logi.protocol.haptics.Haptics.HapticProperties haptic_properties = 65;
+  .logi.protocol.devices.SpecialKeysDivertState special_keys_divert_state = 66;
+  repeated string tags = 27;
+  uint32 task_id = 28;
+  string application_id = 29;
+  .logi.protocol.macros.Gesture gesture = 31;
+  .logi.protocol.profiles_v2.GestureInfo gesture_info = 32;
+  bool continuous = 33;
+  string category = 67;
+  bool isCommand = 68;
+}
+
+message Assignment {
+  string slot_id = 1;
+  string card_id = 2;
+  .logi.protocol.profiles_v2.Card card = 3;
+  bool is_disabled = 4;
+  repeated string tags = 5;
+}
+
+message Update {
+  repeated .logi.protocol.profiles_v2.Profile updated_profiles = 1;
+  repeated string removed_profile_ids = 2;
+  repeated string updated_slot_ids = 3;
+  bool skip_for_settings_backup = 4;
+  bool settings_migration = 5;
+}
+
+message Slot {
+  string id = 1;
+  string name = 2;
+  .logi.protocol.profiles_v2.Card.Attribute attribute = 3;
+}
+
+message MacroAction {
+  .logi.protocol.devices.TriggerEvent trigger = 1;
+  .logi.protocol.macros.Macro macro = 2;
+}
+
+message TriggerEventCardBundle {
+  .logi.protocol.devices.TriggerEvent trigger_event = 1;
+  string card_id = 2;
+}
+
+message HiddenSlots {
+  repeated string slot_ids = 1;
+}
+
+message ProfileAssignment {
+  string profile_id = 1;
+  .logi.protocol.profiles_v2.Assignment assignment = 2;
+  .logi.protocol.profiles_v2.Card card = 3;
+  bool do_not_broadcast = 4;
+  bool is_migrated = 5;
+}
+
+message DeviceAppInfo {
+  string app_id = 1;
+  string device_id = 2;
+  string slot_prefix = 3;
+  string slice_name = 4;
+  string model_id = 5;
+  bool is_predefined_profiles_enabled = 6;
+}
+
+message ProfileAppInfo {
+  string profile_id = 1;
+  string slot_prefix = 2;
+}
+
+message DefaultAssignmentV2 {
+  string id = 1;
+  string card_info = 2;
+  .logi.protocol.macros.Macro macro = 3;
+  repeated string tags = 4;
+  .logi.protocol.profiles_v2.Card.ChangePointerSpeed change_pointer_speed = 5;
+}
+
+message DefaultAssignment {
+  string id = 1;
+  .logi.protocol.profiles_v2.Card card = 2;
+  repeated string tags = 3;
+}
+
+message DefaultsMap {
+  message DefaultsEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.DefaultAssignmentList value = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.DefaultsMap.DefaultsEntry defaults = 1;
+}
+
+message Defaults {
+  repeated .logi.protocol.profiles_v2.Assignment assignments = 1;
+}
+
+message DefaultAssignmentList {
+  repeated .logi.protocol.profiles_v2.DefaultAssignmentV2 default_assignment = 1;
+}
+
+message DefaultsSliceInfo {
+  string device_id = 1;
+  string app_id = 2;
+  repeated string tags = 3;
+  string slot_id = 4;
+  string predefined_profile_id = 5;
+}
+
+message AssignmentQueryInfo {
+  string profile_id = 1;
+  string slot_id = 2;
+}
+
+message SyncAssignmentInfoError {
+  .logi.protocol.profiles_v2.SyncAssignmentError error_code = 1;
+  string slot_id = 2;
+}
+
+message SyncAssignmentInfoPayload {
+  string profile_id = 1;
+  string device_id = 2;
+  repeated string slot_ids = 3;
+  repeated .logi.protocol.profiles_v2.SyncAssignmentInfoError errors = 4;
+}
+
+message SyncAssignmentInfo {
+  string profile_id = 1;
+  string device_id = 2;
+  repeated string slot_ids = 3;
+  bool sync_broadcast_disable = 4;
+}
+
+message SetFeatureFlag {
+  message FeatureFlagStateEntry {
+    string key = 1;
+    bool value = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.SetFeatureFlag.FeatureFlagStateEntry feature_flag_state = 1;
+}
+
+message DeviceDefaultsInfo {
+  .logi.protocol.devices.Device.Info device = 1;
+  .logi.protocol.profiles_v2.Defaults defaults = 2;
+}
+
+message GetCardQuery {
+  string slot_id = 1;
+  string device_id = 2;
+  .logi.protocol.profiles_v2.Card card = 3;
+}
+
+message CardCollection {
+  repeated .logi.protocol.profiles_v2.Card cards = 1;
+}
+
+message MapAppCardCollection {
+  message AppsEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.CardCollection value = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.MapAppCardCollection.AppsEntry apps = 1;
+}
+
+message ProfileSliceQueryInfo {
+  string profile_id = 1;
+  string app_id = 2;
+  string device_id = 3;
+  repeated string tags = 4;
+  string predefined_profile_id = 5;
+}
+
+message ProfileSliceQueryInfoV2 {
+  string profile_id = 1;
+  string app_id = 2;
+  string predefined_profile_id = 3;
+  string device_id = 4;
+  repeated string tags = 5;
+}
+
+message DeviceDeck {
+  repeated .logi.protocol.profiles_v2.Slot slots = 1;
+}
+
+message MigrationDefaults {
+  .logi.protocol.devices_support.Device.Support device_support = 1;
+  .logi.protocol.profiles_v2.Defaults defaults = 2;
+}
+
+message DeviceRestoreQueryInfo {
+  string device_id = 1;
+  string slot_prefix = 2;
+}
+
+message MergeProfilesInput {
+  string device_id = 1;
+  .logi.protocol.profiles_v2.Profiles profiles = 2;
+  .logi.protocol.applications.Applications apps = 3;
+}
+
+message MergeProfilesIntegrationResults {
+  message Instance {
+    string integration_guid = 1;
+    bool status = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.MergeProfilesIntegrationResults.Instance instances = 1;
+}
+
+message ModeShiftResetInfo {
+  message IsModeShiftResetEntry {
+    string key = 1;
+    bool value = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.ModeShiftResetInfo.IsModeShiftResetEntry is_mode_shift_reset = 1;
+}
+
+message MacroInfo {
+  enum OriginType {
+    CUSTOM = 0;
+    PREDEFINED = 1;
+    SHARED = 2;
+  }
+
+  enum Platform {
+    NOT_SPECIFIED = 0;
+    WIN = 1;
+    OSX = 2;
+  }
+
+  enum Category {
+    PRODUCTIVITY = 0;
+    MEETINGS = 1;
+    FOR_DESIGNERS = 2;
+    FOR_DEVELOPERS = 3;
+    MODES = 4;
+    AI = 5;
+    LEISURE = 6;
+  }
+
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string icon_path = 4;
+  repeated .logi.protocol.profiles_v2.Card cards = 5;
+  .logi.protocol.profiles_v2.MacroState state = 6;
+  uint64 last_edit_timestamp = 7;
+  .logi.protocol.profiles_v2.MacroInfo.OriginType origin_type = 8;
+  string predefined_id_ref = 9;
+  .logi.protocol.profiles_v2.MacroInfo.Platform platform = 10;
+  uint32 usage_count = 11;
+  repeated .logi.protocol.profiles_v2.MacroInfo.Category categories = 12;
+  repeated string specific_regions = 13;
+  repeated string restricted_regions = 14;
+  .logi.protocol.macros_categories.CustomCategories custom_categories = 15;
+}
+
+message MacroInfosCollection {
+  repeated .logi.protocol.profiles_v2.MacroInfo macro_infos = 1;
+}
+
+message MergeMacroInfos {
+  .logi.protocol.profiles_v2.MacroInfosCollection macro_infos = 1;
+}
+
+message MacroSlotInfo {
+  string slot_id = 1;
+  optional string folder_nested_key = 2;
+}
+
+message MacroSlotInfosCollection {
+  repeated .logi.protocol.profiles_v2.MacroSlotInfo macro_slot_infos = 1;
+}
+
+message MacroAssignmentRef {
+  message ProfileSlotsEntry {
+    string key = 1;
+    .logi.protocol.profiles_v2.MacroSlotInfosCollection value = 2;
+  }
+
+  repeated .logi.protocol.profiles_v2.MacroAssignmentRef.ProfileSlotsEntry profile_slots = 1;
+  string macro_id = 2;
+  string macro_name = 3;
+}
+
+message MacroAssignmentTriggerRef {
+  .logi.protocol.macros.Macros.Trigger trigger_info = 1;
+  string macro_id = 2;
+}
+
+message MacroAssignmentRefCollection {
+  repeated .logi.protocol.profiles_v2.MacroAssignmentRef macro_assignment_refs = 1;
+}
+
+message MacroAssignmentVal {
+  repeated .logi.protocol.macros.Macros.Trigger triggers = 1;
+  .logi.protocol.profiles_v2.MacroInfo macro_info = 2;
+}
+
+message MacroAssignmentValCollection {
+  repeated .logi.protocol.profiles_v2.MacroAssignmentVal macro_assignment_vals = 1;
+}
+
+message MacroUsageCounter {
+  .logi.protocol.macros.Macros.Trigger trigger_info = 1;
+  .logi.protocol.profiles_v2.MacroInfo macro_info = 2;
+  uint64 count = 3;
+}
+
+message MacroUsageCountersCollection {
+  repeated .logi.protocol.profiles_v2.MacroUsageCounter macro_usage_counters = 1;
+}
+
+message DeviceSharedContext {
+  string active_card_id = 1;
+}
+
+message SlotIdsReport {
+  repeated string new_slot_ids = 1;
+  repeated string removed_slot_ids = 2;
+}
+
+message CopySettingsInfo {
+  string source_device_id = 1;
+  string target_device_id = 2;
+}
+
+message CopySettingsResponse {
+  string source_device_id = 1;
+  string target_device_id = 2;
+  repeated .logi.protocol.profiles_v2.Profile copied_profiles = 3;
+}
+
+message AssignmentsBulkRequest {
+  message Entry {
+    oneof op {
+      .logi.protocol.profiles_v2.ProfileAssignment set = 1;
+      .logi.protocol.profiles_v2.AssignmentQueryInfo remove = 2;
+    }
+  }
+
+  repeated .logi.protocol.profiles_v2.AssignmentsBulkRequest.Entry ops = 1;
+}
+
+enum SyncAssignmentError {
+  FAILED_SYNC = 0;
+  SYNC_NOT_AVAILABLE = 1;
+}
+
+enum MacroState {
+  ACTIVE = 0;
+  INACTIVE_DRAFT = 1;
+  INACTIVE_MANUALLY = 2;
+}
+

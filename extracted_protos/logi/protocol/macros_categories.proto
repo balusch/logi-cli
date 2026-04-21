@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package logi.protocol.macros_categories;
+
+import "logi/protocol/util.proto";
+
+message CustomCategory {
+  string id = 1;
+  string name = 2;
+  optional uint32 order_number = 3;
+}
+
+message CustomCategories {
+  repeated .logi.protocol.macros_categories.CustomCategory categories = 1;
+}
+
+message CustomCategoriesUpdate {
+  .logi.protocol.macros_categories.CustomCategories categories = 1;
+  repeated string removed = 2;
+  repeated string renamed = 3;
+}
+
+message CustomCategoriesMacroUpdate {
+  string macro_id = 1;
+  .logi.protocol.macros_categories.CustomCategories categories = 2;
+}
+

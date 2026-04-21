@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package logi.protocol.notifications;
+
+import "logi/protocol/util.proto";
+
+message SystemNotification {
+  message DataEntry {
+    string key = 1;
+    string value = 2;
+  }
+
+  enum DisplayStyle {
+    SYSTEM = 0;
+    TOAST = 1;
+  }
+
+  string message_key = 1;
+  repeated .logi.protocol.notifications.SystemNotification.DataEntry data = 2;
+  .logi.protocol.util.Time timeout = 3;
+  .logi.protocol.notifications.SystemNotification.DisplayStyle style = 4;
+}
+
+message NotificationSettings {
+  .logi.protocol.notifications.NotificationType notification_type = 1;
+  bool enabled = 2;
+}
+
+message GetNotificationSettings {
+  .logi.protocol.notifications.NotificationType notification_type = 1;
+}
+
+message GenericNotification {
+  message BatteryStatus {
+    string device_id = 1;
+    uint32 battery_level = 2;
+    uint64 time = 3;
+  }
+
+  message CapsLock {
+    bool caps_lock_enabled = 1;
+  }
+
+  message ShowMode {
+    bool show_mode_enabled = 1;
+  }
+
+  message NumLock {
+    bool num_lock_enabled = 1;
+  }
+
+  message FnLock {
+    bool fn_lock_enabled = 1;
+  }
+
+  message ScrollLock {
+    bool scroll_lock_enabled = 1;
+  }
+
+  message FnInversion {
+    bool fn_inversion_enabled = 1;
+  }
+
+  message BacklightInfo {
+    enum BacklightEffect {
+      StaticEffect = 0;
+      NoneEffect = 1;
+      BreathingLightEffect = 2;
+      ContrastEffect = 3;
+      ReactionEffect = 4;
+      RandomEffect = 5;
+      WavesEffect = 6;
+      DoNotChangeTheCurrentEffect = 255;
+    }
+
+    bool low_power = 1;
+    bool bright_environment = 2;
+    uint32 level = 3;
+    .logi.protocol.notifications.GenericNotification.BacklightInfo.BacklightEffect notif_info_backlight_effect = 4;
+    bool is_backlight_effect_change = 5;
+  }
+
+  message Mic {
+    bool is_mute = 1;
+  }
+
+  message Quarantine {
+    string device_id = 1;
+    bool quarantined = 2;
+  }
+
+  message Toast {
+    string title = 1;
+    string description = 2;
+    string app_name = 3;
+    string app_user_model_id = 4;
+    uint64 expiration = 5;
+    repeated string actions = 6;
+    string notification_id = 7;
+    string category_id = 8;
+    bool remove = 9;
+  }
+
+  message ToastEvent {
+    string notification_id = 1;
+    .logi.protocol.notifications.GenericNotification.ToastAction action = 2;
+    int32 action_index = 3;
+  }
+
+  enum ToastAction {
+    INVALID_TOAST_ACTION = 0;
+    TOAST_ACTIVATED = 1;
+    TOAST_CANCELED = 2;
+    TOAST_TIMED_OUT = 3;
+    TOAST_APPLICATION_HIDDEN = 4;
+    TOAST_FAILED = 5;
+  }
+
+  .logi.protocol.notifications.NotificationType notification_type = 1;
+  oneof notification {
+    .logi.protocol.notifications.GenericNotification.BatteryStatus battery_status = 2;
+    .logi.protocol.notifications.GenericNotification.CapsLock caps_lock = 3;
+    .logi.protocol.notifications.GenericNotification.NumLock num_lock = 4;
+    .logi.protocol.notifications.GenericNotification.FnLock fn_lock = 5;
+    .logi.protocol.notifications.GenericNotification.ScrollLock scroll_lock = 6;
+    .logi.protocol.notifications.GenericNotification.FnInversion fn_inversion = 7;
+    .logi.protocol.notifications.GenericNotification.BacklightInfo backlight_info = 8;
+    .logi.protocol.notifications.GenericNotification.Toast toast = 9;
+    .logi.protocol.notifications.GenericNotification.Mic mic = 10;
+    .logi.protocol.notifications.GenericNotification.ShowMode show_mode = 11;
+  }
+}
+
+enum NotificationType {
+  INVALID_NOTIFICATION_TYPE = 0;
+  BATTERY_STATUS = 1;
+  CAPS_LOCK = 2;
+  NUM_LOCK = 3;
+  FN_LOCK = 4;
+  SCROLL_LOCK = 5;
+  FN_INVERSION = 6;
+  BACKLIGHT = 7;
+  TOAST = 8;
+  MIC = 9;
+  SHOW_MODE = 10;
+  NOTIFICATION_TYPES_COUNT = 11;
+}
+

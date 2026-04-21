@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package logi.protocol.lux_report;
+
+message Capabilities {
+  int32 max_reports_number = 1;
+  int32 max_reports_period = 2;
+  int32 device_delta_value = 3;
+}
+
+message LightMeasurementRequest {
+  int32 reports_number = 1;
+  int32 reports_period = 2;
+}
+
+message LightMeasurement {
+  int32 lux_value = 1;
+}
+

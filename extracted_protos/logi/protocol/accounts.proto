@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package logi.protocol.accounts;
+
+import "logi/common_protocol/message.proto";
+
+message UserClaims {
+  string email = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string picture_url = 4;
+  string phone_number = 5;
+}
+
+message UserInfoUpdated {
+  enum AccountsEventType {
+    LOGIN = 0;
+    LOGOUT = 1;
+    REFRESH = 2;
+  }
+
+  .logi.protocol.accounts.UserInfoUpdated.AccountsEventType type = 1;
+  .logi.protocol.Result.Code result = 2;
+}
+
+message Config {
+  enum ServerConfigType {
+    STAGE = 0;
+    PROD = 1;
+  }
+
+  optional .logi.protocol.accounts.Config.ServerConfigType server_config_type = 1;
+  optional int32 email_analytics_report_timeout_sec = 2;
+}
+
+message PkceServerResponse {
+  string code = 1;
+  string state = 2;
+}
+
+message EmailSubscription {
+  enum EmailSubscriptionStateType {
+    INVALID = 0;
+    ON = 1;
+    OFF = 2;
+    UNKNOWN = 3;
+  }
+
+  .logi.protocol.accounts.EmailSubscription.EmailSubscriptionStateType state = 1;
+}
+
+message EmailRegistrationStatus {
+  enum EmailRegistrationStatusType {
+    SUCCESS = 0;
+    TIMEOUT_ERROR = 1;
+  }
+
+  .logi.protocol.accounts.EmailRegistrationStatus.EmailRegistrationStatusType status = 1;
+  optional .logi.protocol.accounts.UserClaims identity = 2;
+}
+

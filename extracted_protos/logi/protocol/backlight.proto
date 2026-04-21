@@ -1,0 +1,117 @@
+syntax = "proto3";
+
+package logi.protocol.backlight;
+
+message BacklightDurationProperty {
+  uint32 bld_handsout = 1;
+  uint32 bld_handsin = 2;
+  uint32 bld_powered = 3;
+  uint32 bld_notpowered = 4;
+}
+
+message BacklightDuration {
+  optional .logi.protocol.backlight.BacklightDurationProperty manual_duration = 1;
+  optional .logi.protocol.backlight.BacklightDurationData duration_data = 2;
+}
+
+message BacklightDurationData {
+  uint32 min = 1;
+  uint32 max = 2;
+  uint32 low_step = 3;
+  uint32 high_step = 4;
+  uint32 mid = 5;
+  uint32 multiplier_for_seconds_conversion = 6;
+}
+
+message BacklightLevel {
+  uint32 current_bl_level = 1;
+  .logi.protocol.backlight.BacklightMode current_bl_mode = 2;
+  repeated .logi.protocol.backlight.BacklightMode bld_modes = 3;
+  bool force_set = 5;
+  optional uint32 num_levels = 4;
+}
+
+message HandDetectionSettings {
+  bool enable_hand_detection = 1;
+  uint32 current_duration = 2;
+  repeated uint32 duration_non_linear_seconds = 3;
+}
+
+message Settings {
+  bool enabled = 1;
+  bool power_save = 2;
+  .logi.protocol.backlight.BacklightEffect backlight_effect = 3;
+  optional .logi.protocol.backlight.BacklightDuration backlight_duration = 4;
+  optional .logi.protocol.backlight.BacklightLevel backlight_level = 5;
+  optional bool set_backlight_level_with_powersave = 6;
+  optional .logi.protocol.backlight.HandDetectionSettings hand_detection = 7;
+}
+
+message Backlight {
+  message NewState {
+    bool enabled = 1;
+  }
+
+  message State {
+    bool enabled = 1;
+    bool is_on = 2;
+  }
+
+  message PowerMode {
+    bool power_save = 1;
+    .logi.protocol.backlight.Backlight.Level level = 2;
+  }
+
+  message Level {
+    .logi.protocol.backlight.BacklightMode bl_mode = 1;
+    uint32 bl_level = 2;
+    bool force_set = 3;
+  }
+
+  message Duration {
+    uint32 bld_handsout = 1;
+    uint32 bld_handsin = 2;
+    uint32 bld_powered = 3;
+    uint32 bld_notpowered = 4;
+  }
+
+  message Effect {
+    .logi.protocol.backlight.BacklightEffect backlight_effect = 1;
+  }
+
+  message Info {
+    .logi.protocol.backlight.Backlight.FirmwareStatus firmware_status = 1;
+    uint32 level = 2;
+    .logi.protocol.backlight.BacklightEffect backlight_effect = 3;
+  }
+
+  enum FirmwareStatus {
+    INVALID_STATUS = 0;
+    ENABLED = 1;
+    SETTING_DISABLED = 2;
+    LOW_POWER = 3;
+    ALS_SATURATED = 4;
+    STATUS_COUNT = 5;
+  }
+
+}
+
+enum BacklightEffect {
+  StaticEffect = 0;
+  NoneEffect = 1;
+  BreathingLightEffect = 2;
+  ContrastEffect = 3;
+  ReactionEffect = 4;
+  RandomEffect = 5;
+  WavesEffect = 6;
+  DoNotChangeTheCurrentEffect = 255;
+}
+
+enum BacklightMode {
+  BLModeNone = 0;
+  BLModeAutomatic = 1;
+  BLModeTemporaryManual = 2;
+  BLModePermanentManual = 3;
+  BLModeBasicManual = 4;
+}
+
