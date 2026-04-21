@@ -24,6 +24,7 @@ except ImportError:
         tomllib = None
 
 from agent import LogiAgent
+from colors import bold, dim, red, green, yellow, cyan, battery_color, state_color
 from mappings import (
     ACTION_ALIASES, BUTTON_NAMES, BUTTON_SLOTS,
     get_action_name, get_button_name, parse_keystroke,
@@ -39,15 +40,17 @@ def cmd_status(args):
     mouse = agent.require_mouse(args.device)
     did = mouse["id"]
 
-    print(f"  {mouse.get('displayName', '?')} ({mouse.get('extendedDisplayName', '')})")
-    print(f"    State:      {mouse.get('state', '?')}")
+    print(f"  {bold(mouse.get('displayName', '?'))} {dim(mouse.get('extendedDisplayName', ''))}")
+    print(f"    State:      {state_color(mouse.get('state', '?'))}")
     print(f"    Connection: {mouse.get('connectionType', '?')}")
     print(f"    Firmware:   {mouse.get('activeInterfaces', [{}])[0].get('firmwareVersion', '?')}")
 
     p = agent.get_ok(f"/battery/{did}/state")
     if p:
-        charging = " (charging)" if p.get("charging") else ""
-        print(f"    Battery:    {p.get('percentage', '?')}% [{p.get('level', '?')}]{charging}")
+        pct = p.get("percentage", "?")
+        level = p.get("level", "")
+        charging = f" {green('(charging)')}" if p.get("charging") else ""
+        print(f"    Battery:    {battery_color(pct, level)} [{level}]{charging}")
 
     p = agent.get_ok(f"/mouse/{did}/pointer_speed")
     if p:
@@ -287,6 +290,89 @@ def cmd_button(args):
     agent.close()
 
 
+GESTURE_MODES = {
+    "window-navigation": "window_navigation",
+    "window": "window_navigation",
+    "media-control": "media_control",
+    "media": "media_control",
+    "pan": "pan",
+    "zoom-rotate": "zoom_rotate",
+    "zoom": "zoom_rotate",
+    "app-navigation": "application_navigation",
+    "app": "application_navigation",
+    "custom": "custom_gesture",
+}
+
+
+def cmd_gesture(args):
+    """Set gesture button mode."""
+    mode = args.mode.lower()
+    mode_id = GESTURE_MODES.get(mode)
+    if not mode_id:
+        print(f"Unknown gesture mode: {mode}", file=sys.stderr)
+        print(f"Available: {', '.join(sorted(GESTURE_MODES))}", file=sys.stderr)
+        sys.exit(1)
+
+    agent = LogiAgent()
+    mouse = agent.require_mouse(args.device)
+    did = mouse["id"]
+    profile = agent.require_profile(args.profile)
+    slot_prefix = mouse.get("slotPrefix", "")
+
+    # Use minimal card (full nested card is ~22KB and causes timeout)
+    card = {
+        "id": "card_global_presets_one_of_gesture_button",
+        "name": "ASSIGNMENT_NAME_GESTURE",
+        "attribute": "ONE_OF",
+        "selectedNestedCard": mode_id,
+    }
+    if agent.set_ok("/v2/assignment", {
+        "profileId": profile["id"],
+        "assignment": {
+            "cardId": card["id"],
+            "slotId": f"{slot_prefix}_c195",
+            "tags": ["UI_PAGE_BUTTONS"],
+            "card": card,
+        },
+    }):
+        print(f"OK: Gesture Button -> {mode}")
+    agent.close()
+
+
+def cmd_switch(args):
+    """Show Easy Switch channels."""
+    agent = LogiAgent()
+    mouse = agent.require_mouse(args.device)
+    did = mouse["id"]
+
+    p = agent.get_ok(f"/devices/{did}/easy_switch")
+    if not p:
+        print("Error: could not read Easy Switch info", file=sys.stderr)
+        agent.close()
+        return
+
+    print(f"  {bold(mouse.get('displayName', '?'))} Easy Switch")
+    for h in p.get("hosts", []):
+        idx = h.get("index", "?")
+        name = h.get("name", "")
+        paired = h.get("paired", False)
+        connected = h.get("connected", False)
+        bus = h.get("busType", "")
+        os_type = h.get("os", {}).get("type", "")
+
+        if connected:
+            status = green("connected")
+        elif paired:
+            status = yellow("paired")
+        else:
+            status = dim("empty")
+
+        label = name or "(unpaired)"
+        print(f"    Ch{idx}: {label} [{status}] {dim(f'{bus} {os_type}')}")
+
+    agent.close()
+
+
 def _print_action_help(attempted):
     """Print helpful action suggestions, using fzf if available."""
     all_actions = sorted(ACTION_ALIASES.keys())
@@ -382,17 +468,20 @@ def cmd_watch(args):
         payload = msg.get("payload", {})
 
         if "battery" in path:
-            print(f"  [{ts}] Battery: {payload.get('percentage','?')}% {payload.get('level','')}")
+            pct = payload.get('percentage', '?')
+            level = payload.get('level', '')
+            print(f"  {dim(ts)} {battery_color(pct, level)} [{level}]")
         elif "device_arrival" in path or "device_removal" in path:
-            event = "connected" if "arrival" in path else "disconnected"
+            is_arrival = "arrival" in path
+            event = green("connected") if is_arrival else red("disconnected")
             for d in payload.get("deviceInfos", [{}]):
-                print(f"  [{ts}] Device {event}: {d.get('displayName', '?')}")
+                print(f"  {dim(ts)} {bold(d.get('displayName', '?'))} {event}")
         elif "state/changed" in path:
             for d in payload.get("deviceInfos", []):
-                print(f"  [{ts}] {d.get('displayName','?')}: state={d.get('state','?')}")
+                print(f"  {dim(ts)} {d.get('displayName','?')}: {state_color(d.get('state','?'))}")
         else:
             ptype = payload.get("@type", "").split(".")[-1]
-            print(f"  [{ts}] {msg.get('verb','?')} {path} ({ptype})")
+            print(f"  {dim(ts)} {dim(msg.get('verb','?'))} {path} {dim(ptype)}")
 
     print("\nStopped.")
     agent.close()
@@ -767,6 +856,12 @@ def main():
 
     sub.add_parser("profiles", help="List all profiles")
 
+    p = sub.add_parser("gesture", help="Set gesture button mode")
+    p.add_argument("mode", help="window, media, pan, zoom, app, custom")
+    p.add_argument("--profile", help="App profile")
+
+    sub.add_parser("switch", help="Show Easy Switch channels")
+
     p = sub.add_parser("export", help="Export config to JSON")
     p.add_argument("file", nargs="?", help="Output file (default: stdout)")
 
@@ -793,6 +888,7 @@ def main():
         "status": cmd_status, "watch": cmd_watch, "info": cmd_info,
         "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
         "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
+        "gesture": cmd_gesture, "switch": cmd_switch,
         "init": cmd_init, "apply": cmd_apply, "daemon": cmd_daemon, "raw": cmd_raw,
     }
 

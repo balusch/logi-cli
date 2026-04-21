@@ -24,7 +24,7 @@ Homepage = "https://github.com/balusch/logi-cli"
 Repository = "https://github.com/balusch/logi-cli"
 
 [tool.setuptools]
-py-modules = ["logi", "agent", "mappings"]
+py-modules = ["logi", "agent", "mappings", "colors"]
 
 [project.scripts]
 logi = "logi:main"
