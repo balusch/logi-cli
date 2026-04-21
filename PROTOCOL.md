@@ -5,7 +5,7 @@
 The `logioptionsplus_agent` communicates with clients (GUI, CLI) via a Unix domain socket
 using a custom framing protocol with JSON payloads.
 
-**Status: Protocol fully working for read operations.**
+**Status: Protocol fully working — GET, SET, SUBSCRIBE all verified.**
 
 ## Agent Process
 
@@ -27,8 +27,6 @@ The hash is deterministic per installation. Find it with:
 ls /tmp/logitech_kiros_agent-*
 ```
 
-Other sockets exist (`/tmp/<uuid>`) but they appear to be outbound connections from the agent, not client endpoints.
-
 ## Wire Protocol (VERIFIED)
 
 ### Framing
@@ -49,43 +47,39 @@ Where each frame is:
    - Frame 1: `"protobuf"` (the server's native protocol)
    - Frame 2: Protobuf-encoded `Message { verb=OPTIONS, path="/", origin="backend" }`
 
-2. **Client responds** with: a JSON type announcement (no OPTIONS message needed):
+2. **Client responds** with a JSON type announcement (no OPTIONS needed):
    ```
-   [LE total] [BE 4] "json" 
+   [LE total] [BE 4] "json"
    ```
 
 3. After this, the client can send JSON requests.
 
 ### Request Format (VERIFIED)
 
-Each request is:
 ```
 [LE total] [BE 4 "json"] [BE N json_payload]
 ```
 
-JSON payload:
 ```json
 {
   "msg_id": "1",
   "verb": "GET",
   "path": "/permissions",
-  "payload": {}  // optional
+  "payload": {}
 }
 ```
 
 ### Response Format (VERIFIED)
 
-Same framing. JSON payload:
+Same framing. Note: request uses `msg_id`, response uses `msgId` (camelCase).
+
 ```json
 {
   "msgId": "1",
   "verb": "GET",
   "path": "/permissions",
   "origin": "backend",
-  "result": {
-    "code": "SUCCESS",
-    "what": ""
-  },
+  "result": { "code": "SUCCESS", "what": "" },
   "payload": {
     "@type": "type.googleapis.com/logi.protocol.app_permissions.Permissions",
     ...
@@ -93,16 +87,14 @@ Same framing. JSON payload:
 }
 ```
 
-Note: Request uses `msg_id`, response uses `msgId` (camelCase).
-
 ### Verbs
 
 | Verb | Description | Status |
 |------|-------------|--------|
 | GET | Read data | VERIFIED |
-| SET | Write data | Not tested |
-| SUBSCRIBE | Subscribe to broadcasts | Partially tested |
-| BROADCAST | Server push events | Observed in traffic |
+| SET | Write data | VERIFIED |
+| SUBSCRIBE | Subscribe to broadcasts | VERIFIED |
+| BROADCAST | Server push events | VERIFIED (observed) |
 | REMOVE | Delete | Not tested |
 | OPTIONS | Route discovery | Observed in handshake |
 | UNSUBSCRIBE | Unsubscribe | Not tested |
@@ -113,100 +105,139 @@ Note: Request uses `msg_id`, response uses `msgId` (camelCase).
 |------|---------|
 | SUCCESS | OK |
 | NO_SUCH_PATH | Path doesn't exist |
-| INVALID_ARG | Bad argument or verb |
+| INVALID_ARG | Bad argument or verb for this path |
 | INVALID_DEVICE | Device not found |
+| NOT_FOUND | Resource not found (e.g. profile ID) |
 | NOT_READY | Service still loading |
 
-## API Paths
+## Initialization Sequence
 
-### Verified Working (GET)
+Device-specific paths require prior SUBSCRIBE to event channels.
+Without subscriptions, `/devices/list` returns empty or times out.
 
-| Path | Payload Type | Description |
-|------|-------------|-------------|
-| `/permissions` | `app_permissions.Permissions` | App feature flags |
-| `/configuration` | `application.Configuration` | App config (language, theme, etc.) |
-| `/system/info` | `api.system_info` | OS info (Apple Silicon, etc.) |
-| `/system/settings` | `SystemSettings` | System settings |
-| `/scarif/info` | `scarif.Info` | Analytics info, app version |
-| `/options/devices/list` | `devices_support.OptionsDevices` | Supported device catalog (empty) |
-| `/logioptions/info` | `logioptions.LogiOptionsInfo` | Legacy Logi Options info |
-| `/lps/endpoint/info` | `lps.Endpoint.Information` | LPS plugin service state |
-| `/crash_reporting/status` | `crash_reporting.Status` | Crash reporting config |
-| `/macos_security/bluetooth` | `PermissionState` | Bluetooth permission |
-| `/star_rating/notification_pending` | `BoolValue` | Rating notification |
-| `/device_recommendation_enabled` | `BoolValue` | Device recommendations |
-| `/updates/status` | N/A | Update status |
-| `/accounts/is_authenticated` | `List` | Auth status |
-| `/macros/ai_prompt_builder/enabled` | `AiPromptBuilder` | AI feature flag |
+**Required subscriptions before querying devices:**
+```
+SUBSCRIBE /devices/state/changed
+SUBSCRIBE /battery/state/changed
+SUBSCRIBE /devices/options/device_arrival
+SUBSCRIBE /devices/options/device_removal
+```
 
-### Observed in GUI Traffic (Not Yet Working via CLI)
+## Device-Specific Paths (VERIFIED)
 
-| Path | Verb | Notes |
-|------|------|-------|
-| `/devices/list` | GET/SUBSCRIBE | Device list - returns empty or times out |
-| `/devices/state/changed` | SUBSCRIBE | Device state changes |
-| `/battery/state/changed` | SUBSCRIBE | Battery updates |
-| `/unified_profiles/activities` | GET | Profile activities |
-| `/mouse/global/swap` | GET | Mouse button swap |
-| `/applications/all` | GET | Application list |
-| `/lps/service_state` | GET | Full service state |
+Device IDs are assigned by the agent (e.g. `dev00000000`). Discover via `GET /devices/list`.
 
-### GUI Subscription Paths
+| Path | Verb | Payload Type | Description |
+|------|------|-------------|-------------|
+| `/devices/list` | GET | `devices.Device.Info.List` | List all devices (ID, model, state, capabilities) |
+| `/battery/{id}/state` | GET | `wireless.Battery` | Battery %, charging status, level |
+| `/mouse/{id}/pointer_speed` | GET/SET | `mouse.PointerSpeed` | Pointer speed (0.0-1.0) |
+| `/mouse/{id}/info` | GET | `mouse.Info` | DPI range (min/max/step), capabilities |
+| `/smartshift/{id}/params` | GET/SET | `mouse.SmartShiftSettings` | SmartShift mode/sensitivity |
+| `/scrollwheel/{id}/params` | GET/SET | `mouse.ScrollWheelSettings` | Scroll speed/direction |
 
-These are subscribed to by the GUI on startup:
-- `/devices/state/changed`
-- `/devices/options/device_arrival`
-- `/devices/options/device_removal`
-- `/devices/devio/device_removal`
-- `/battery/state/changed`
-- `/offer/revoke`, `/offer/retrieve`
-- `/v2/profiles/device/assignment_sync_complete`
-- `/star_rating/trigger`
-- `/configuration`
-- Various macros and LPS paths
+### Payload Examples
 
-### Device-Specific Paths (from binary strings)
+**PointerSpeed** (GET/SET):
+```json
+{"active": {"value": 0.44, "highResolutionSensorActive": false, "dpiLevel": 1}}
+```
 
-Format: `/path/%s/action` where `%s` is a device ID.
+**SmartShiftSettings** (GET/SET):
+```json
+{"isEnabled": true, "sensitivity": 82, "mode": "RATCHET", "isScrollForceEnabled": false, "scrollForce": 0}
+```
 
-- `/devices/%s/info` - Device info
-- `/devices/%s/list` - Device list  
-- `/battery/%s/state` - Battery state
-- `/mouse/%s/info` - Mouse info
-- `/mouse/%s/pointer_speed` - Pointer speed
-- `/mouse/%s/dpi_shift` - DPI shift
-- `/smartshift/%s/params` - SmartShift settings
-- `/scrollwheel/%s/params` - Scroll wheel settings
-- `/mouse_settings/configure` - Configure mouse settings
-- `/mouse_scroll_wheel_settings/configure` - Configure scroll
-- `/mouse_thumb_wheel_settings/configure` - Configure thumb wheel
+**ScrollWheelSettings** (GET/SET):
+```json
+{"speed": 0.62, "dir": "STANDARD", "isSmooth": false}
+```
 
-## Device Info
+**Battery** (GET):
+```json
+{"deviceId": "dev00000000", "percentage": 55, "charging": false, "level": "GOOD"}
+```
 
-### From settings.db
+## Profile & Button Remapping (VERIFIED)
 
-The device configuration is stored in `~/Library/Application Support/LogiOptionsPlus/settings.db`
-as a JSON blob in the `data` table.
+### Get Profiles
 
-Key structure:
-- `ever_connected_devices.devices[]` - List of known devices
-- `battery/<slot_prefix>/warning_notification` - Battery info
-- `easy_switch.devices[]` - Easy Switch channel info
-- `profile-<uuid>` - Button assignment profiles
-- `profile-application_id_*` - Per-app profiles
+`GET /v2/profiles` returns all profiles with assignments.
 
-### MX Master 3S Device Info
+Profile discovery: the default profile has `applicationId` that does NOT contain `application_id`.
+App-specific profiles have IDs like `application_id_apple_safari`.
 
-- **Model ID**: `2b034`
-- **Product ID**: `0xB034`
-- **Vendor ID**: `0x046D`
-- **Device Type**: `MOUSE`
-- **Connection**: BLE
-- **Firmware**: `RBM22.00_0003`
-- **Agent Device ID**: `dev00000005` / `dev00000017`
-- **Slot Prefix**: `mx-master-3s-2b034`
+### Get Button Assignments
 
-### Button IDs (MX Master 3S)
+`GET /v2/profiles/slice/preview` with payload:
+```json
+{
+  "profileId": "<uuid>",
+  "appId": "<uuid>",
+  "deviceId": "dev00000000",
+  "tags": ["UI_PAGE_BUTTONS"]
+}
+```
+
+### Set Button Assignment (VERIFIED)
+
+`SET /v2/assignment`
+
+**Preset action:**
+```json
+{
+  "profileId": "<uuid>",
+  "assignment": {
+    "cardId": "card_global_presets_osx_undo",
+    "slotId": "mx-master-3s-2b034_c83",
+    "tags": ["UI_PAGE_BUTTONS"],
+    "card": {
+      "id": "card_global_presets_osx_undo",
+      "attribute": "MACRO_PLAYBACK",
+      "readOnly": true,
+      "macro": {
+        "type": "KEYSTROKE",
+        "actionName": "Cmd + Z",
+        "keystroke": {"code": 29, "modifiers": [227], "virtualKeyId": "VK_Z"}
+      },
+      "tags": ["PRESET_TAG_KEY_OR_BUTTON"]
+    }
+  }
+}
+```
+
+**Custom keystroke:**
+```json
+{
+  "profileId": "<uuid>",
+  "assignment": {
+    "cardId": "custom_keystroke",
+    "slotId": "mx-master-3s-2b034_c83",
+    "tags": ["UI_PAGE_BUTTONS"],
+    "card": {
+      "id": "custom_keystroke",
+      "attribute": "MACRO_PLAYBACK",
+      "readOnly": false,
+      "macro": {
+        "type": "KEYSTROKE",
+        "actionName": "Ctrl + Shift + A",
+        "keystroke": {"code": 4, "modifiers": [224, 225]}
+      }
+    }
+  }
+}
+```
+
+### HID Modifier Codes
+
+| Modifier | Code |
+|----------|------|
+| Left Ctrl | 224 |
+| Left Shift | 225 |
+| Left Alt/Option | 226 |
+| Left Cmd | 227 |
+
+### Button Slot IDs (MX Master 3S)
 
 | Slot Suffix | Button |
 |-------------|--------|
@@ -216,67 +247,60 @@ Key structure:
 | c195 | Gesture button |
 | c196 | Mode shift (scroll wheel) |
 
+### Available Preset Actions (macOS)
+
+Card IDs follow pattern `card_global_presets_osx_<action>`:
+
+back, forward, undo, redo, copy, paste, cut, delete, search, screen_capture,
+emoji, mission_control, launch_pad, smart_zoom, hide_show_desktop, close_tab,
+do_not_disturb, lookup, switch_apps, dictation, language_switch, refresh, print,
+home, end, page_up, page_down
+
+## General API Paths (VERIFIED)
+
+| Path | Payload Type | Description |
+|------|-------------|-------------|
+| `/permissions` | `app_permissions.Permissions` | App feature flags |
+| `/configuration` | `application.Configuration` | App config (language, theme) |
+| `/system/info` | `api.system_info` | OS info (Apple Silicon) |
+| `/scarif/info` | `scarif.Info` | App version, OS, analytics |
+| `/v2/profiles` | `profiles_v2.Profiles` | All profiles with assignments |
+| `/options/devices/list` | `devices_support.OptionsDevices` | Supported device catalog |
+| `/logioptions/info` | `logioptions.LogiOptionsInfo` | Legacy Options info |
+| `/lps/endpoint/info` | `lps.Endpoint.Information` | Plugin service state |
+| `/crash_reporting/status` | `crash_reporting.Status` | Crash reporting config |
+| `/macos_security/bluetooth` | `PermissionState` | BT permission |
+| `/accounts/is_authenticated` | `List` | Auth status |
+
 ## Extracted Protobuf Definitions
 
-83 `.proto` files extracted from the agent binary using `protodump`.
-Located in `extracted_protos/`.
+83 `.proto` files extracted from the agent binary using
+[protodump](https://github.com/arkadiyt/protodump). Located in `extracted_protos/`.
 
 Key files:
-- `logi/common_protocol/message.proto` - Wire format wrapper
-- `logi/protocol/mouse.proto` - Mouse settings (DPI, SmartShift, scroll, etc.)
-- `logi/protocol/devices.proto` - Device info, capabilities, battery
-- `logi/protocol/lps.proto` - Plugin system
-- `logi/protocol/profiles_v2.proto` - Profile management
+- `logi/common_protocol/message.proto` — Wire format (Message, Result, Verb enum)
+- `logi/protocol/mouse.proto` — DPI, PointerSpeed, SmartShift, ScrollWheel, ThumbWheel
+- `logi/protocol/devices.proto` — Device info, battery, capabilities, interfaces
+- `logi/protocol/profiles_v2.proto` — Profile management, assignments
+- `logi/protocol/lps.proto` — Plugin system (Actions SDK)
 
-## Device-Specific Paths (VERIFIED)
+## MX Master 3S Device Info
 
-After subscribing to required channels, device-specific paths work with device IDs
-like `dev00000000`:
-
-| Path | Verb | Payload Type | Description |
-|------|------|-------------|-------------|
-| `/devices/list` | GET | `devices.Device.Info.List` | List all devices |
-| `/battery/{id}/state` | GET | `wireless.Battery` | Battery %, charging, level |
-| `/mouse/{id}/pointer_speed` | GET/SET | `mouse.PointerSpeed` | Pointer speed |
-| `/mouse/{id}/info` | GET | `mouse.Info` | DPI range, capabilities |
-| `/smartshift/{id}/params` | GET/SET | `mouse.SmartShiftSettings` | SmartShift mode/sensitivity |
-| `/scrollwheel/{id}/params` | GET/SET | `mouse.ScrollWheelSettings` | Scroll speed/direction |
-
-**Important**: Device-specific paths require prior SUBSCRIBE to `/devices/state/changed` etc.
-Without subscriptions, `/devices/list` returns empty or times out.
-
-## Button Remapping (VERIFIED)
-
-Path: `SET /v2/assignment`
-
-Payload format:
-```json
-{
-  "profileId": "<profile-uuid>",
-  "assignment": {
-    "card": { "id": "card_global_presets_osx_back", "attribute": "MACRO_PLAYBACK", "readOnly": true, ... },
-    "cardId": "card_global_presets_osx_back",
-    "slotId": "mx-master-3s-2b034_c83",
-    "tags": ["UI_PAGE_BUTTONS"]
-  }
-}
-```
-
-The profile ID can be discovered from settings.db `profile_keys` array.
-Card templates (with macro definitions) are found in existing profile assignments.
-
-### Available Actions (macOS)
-
-back, forward, middle-click, mission-control, launchpad, smart-zoom, undo, redo,
-copy, paste, cut, screenshot, emoji, search, desktop, close-tab, do-not-disturb,
-lookup, switch-apps, dictation, and more.
-
-Full card IDs follow pattern: `card_global_presets_osx_<action>`
+| Field | Value |
+|-------|-------|
+| Model ID | `2b034` |
+| Product ID | `0xB034` |
+| Vendor ID | `0x046D` |
+| Device Type | MOUSE |
+| Connection | BLE |
+| Slot Prefix | `mx-master-3s-2b034` |
+| DPI Range | 200-8000, step 50 |
+| SmartShift | Yes |
+| Programmable Buttons | c82, c83, c86, c195, c196 |
+| Easy Switch | 3 channels |
 
 ## Open Questions
 
-1. **TCP port 59869** - The agent also listens on TCP but doesn't respond to the
-   same protocol. May use a different protocol or be for a different purpose.
-
-2. **Custom keystroke mapping** - Arbitrary key combos (not just presets) likely
-   require a custom card with `macro.keystroke` definition including HID codes.
+1. **TCP port 59869** — Agent also listens on TCP. Different protocol, purpose unknown.
+2. **DPI per-level table** — `dpiLevel` in pointer_speed controls active level. Relationship
+   between speed value and actual DPI is linear within the device's range.
