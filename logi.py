@@ -68,6 +68,53 @@ def cmd_status(args):
     agent.close()
 
 
+def _set_via_profile(agent, mouse, slot_suffix, settings_key, modifier_fn):
+    """Modify a settings assignment (scroll/pointer/thumb) through /v2/assignment."""
+    profile = agent.require_profile()
+    did = mouse["id"]
+    slot_prefix = mouse.get("slotPrefix", "")
+    target_slot = f"{slot_prefix}_{slot_suffix}"
+
+    assignments = agent.get_profile_assignments(profile["id"], did)
+    for a in assignments:
+        if a.get("slotId") == target_slot:
+            card = a.get("card", {})
+            settings = card.get(settings_key, {})
+            if not settings:
+                return False
+            modifier_fn(settings)
+            card[settings_key] = settings
+            return agent.set_ok("/v2/assignment", {
+                "profileId": profile["id"],
+                "assignment": {
+                    "cardId": a.get("cardId", card.get("id", "")),
+                    "slotId": target_slot,
+                    "tags": a.get("tags", []),
+                    "card": card,
+                },
+            })
+    return False
+
+
+def _set_scroll_via_profile(agent, mouse, param, value):
+    """Set scroll wheel settings through profile assignment."""
+    def modify(settings):
+        if param == "scroll-speed":
+            settings["speed"] = float(value)
+        elif param == "scroll-direction":
+            dirs = {"natural": "NATURAL", "standard": "STANDARD", "normal": "STANDARD"}
+            if value.lower() not in dirs:
+                print("Error: value must be natural or standard", file=sys.stderr)
+                sys.exit(1)
+            settings["dir"] = dirs[value.lower()]
+
+    ok = _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings",
+                          "mouseScrollWheelSettings", modify)
+    if ok:
+        print(f"OK: {param} = {value}")
+    return ok
+
+
 def cmd_set(args):
     agent = LogiAgent()
     mouse = agent.require_mouse()
@@ -126,19 +173,9 @@ def cmd_set(args):
             print(f"OK: smartshift-sensitivity = {val}")
 
     elif param in ("scroll-speed", "scroll-direction"):
-        cur = agent.get_ok(f"/scrollwheel/{did}/params")
-        if not cur:
-            print("Error: could not read scroll settings", file=sys.stderr); sys.exit(1)
-        cur.pop("@type", None)
-        if param == "scroll-speed":
-            cur["speed"] = float(value)
-        else:
-            dirs = {"natural": "NATURAL", "standard": "STANDARD", "normal": "STANDARD"}
-            if value.lower() not in dirs:
-                print("Error: value must be natural or standard", file=sys.stderr); sys.exit(1)
-            cur["dir"] = dirs[value.lower()]
-        if agent.set_ok(f"/scrollwheel/{did}/params", cur):
-            print(f"OK: {param} = {value}")
+        ok = _set_scroll_via_profile(agent, mouse, param, value)
+        if not ok:
+            print("Error: could not update scroll settings", file=sys.stderr); sys.exit(1)
 
     else:
         print(f"Unknown parameter: {param}", file=sys.stderr)
@@ -364,10 +401,19 @@ def cmd_import(args):
     applied = []
 
     for key, path in [("pointer_speed", f"/mouse/{did}/pointer_speed"),
-                       ("smartshift", f"/smartshift/{did}/params"),
-                       ("scroll_wheel", f"/scrollwheel/{did}/params")]:
+                       ("smartshift", f"/smartshift/{did}/params")]:
         if key in config and agent.set_ok(path, config[key]):
             applied.append(key)
+
+    # Scroll wheel: SET via profile assignment (direct path no longer supports SET)
+    if "scroll_wheel" in config:
+        def apply_scroll(settings):
+            for k, v in config["scroll_wheel"].items():
+                if k != "@type":
+                    settings[k] = v
+        if _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings",
+                            "mouseScrollWheelSettings", apply_scroll):
+            applied.append("scroll_wheel")
 
     if "buttons" in config:
         profile = agent.get_default_profile()
