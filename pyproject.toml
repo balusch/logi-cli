@@ -6,18 +6,28 @@ build-backend = "setuptools.build_meta"
 name = "logi-cli"
 version = "0.1.0"
 description = "CLI tool for Logitech Options+ device management on macOS"
+readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
-keywords = ["logitech", "mouse", "cli", "mx-master"]
+authors = [{name = "balusch"}]
+keywords = ["logitech", "mouse", "cli", "mx-master", "options-plus"]
 classifiers = [
     "Environment :: Console",
     "Operating System :: MacOS",
     "Programming Language :: Python :: 3",
     "Topic :: System :: Hardware",
+    "License :: OSI Approved :: MIT License",
 ]
+
+[project.urls]
+Homepage = "https://github.com/balusch/logi-cli"
+Repository = "https://github.com/balusch/logi-cli"
 
 [tool.setuptools]
 py-modules = ["logi", "agent", "mappings"]
 
 [project.scripts]
 logi = "logi:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
