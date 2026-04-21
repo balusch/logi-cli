@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Bash(*:*)",
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(node:*)",
+      "Bash(grep -E \"\\\\.proto$\")",
+      "Bash(ls /tmp/logitech_kiros_agent-*)",
+      "Bash(ls /Applications/Logi*Options*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:arkadiyt.com)",
+      "Bash(grep \"\\\\.proto$\")",
+      "Bash(go version:*)",
+      "Bash(go install:*)",
+      "Bash(~/go/bin/protodump -file \"/Library/Application Support/Logi/LogiOptionsPlus/depots/728982/logioptionsplus/logioptionsplus_agent.app/Contents/MacOS/logioptionsplus_agent\" -output /tmp/logi_protos)",
+      "WebFetch(domain:logitech.github.io)",
+      "Bash(ls -la /tmp/logi_asar/*.js)",
+      "Bash(awk '{print $5, $NF}')",
+      "Bash(ls:*)",
+      "Bash(open -a logioptionsplus)",
+      "Bash(chmod +x:*)",
+      "Bash(grep -oP '.{0,200}pointerSpeed.{0,200}' app.min.js)",
+      "Bash(grep -oP '.{0,200}smartshift.{0,200}' app.min.js)",
+      "Bash(grep -oP '.{0,300}verb.{0,5}\"?SET\"?.{0,300}' app.min.js)"
+    ]
+  }
+}

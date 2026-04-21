@@ -3,8 +3,8 @@
 
 class LogiCli < Formula
   desc "CLI tool for Logitech Options+ device management on macOS"
-  homepage "https://github.com/user/logi-pro"
-  url "https://github.com/user/logi-pro/archive/refs/tags/v0.1.0.tar.gz"
+  homepage "https://github.com/balusch/logi-cli"
+  url "https://github.com/balusch/logi-cli/archive/refs/tags/v0.1.0.tar.gz"
   sha256 "TODO"
   license "MIT"
 
