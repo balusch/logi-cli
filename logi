@@ -138,6 +138,20 @@ class LogiAgent:
                 return p
         return None
 
+    def find_profile(self, name):
+        """Find a profile by name or ID. Supports short names like 'safari', 'chrome'."""
+        profiles = self.get_profiles()
+        name_lower = name.lower()
+        for p in profiles:
+            pid = p.get("id", "")
+            app_id = p.get("applicationId", "")
+            if pid == name or app_id == name:
+                return p
+            # Match short names: "safari" -> "application_id_apple_safari"
+            if name_lower in app_id.lower():
+                return p
+        return None
+
     def get_profile_assignments(self, profile_id, device_id, tags=None):
         """Get button assignments for a profile via /v2/profiles/slice/preview."""
         payload = {
@@ -516,9 +530,12 @@ def cmd_button(args):
         agent.close()
         sys.exit(1)
 
-    profile = None
     if args.profile:
-        profile = {"id": args.profile}
+        profile = agent.find_profile(args.profile)
+        if not profile:
+            print(f"Error: profile '{args.profile}' not found", file=sys.stderr)
+            agent.close()
+            sys.exit(1)
     else:
         profile = agent.get_default_profile()
     if not profile:
@@ -575,18 +592,23 @@ def cmd_buttons(args):
     slot_prefix = mouse.get("slotPrefix", "mx-master-3s-2b034")
 
     if args.profile:
-        profile_id = args.profile
+        profile = agent.find_profile(args.profile)
+        if not profile:
+            print(f"Error: profile '{args.profile}' not found", file=sys.stderr)
+            agent.close()
+            return
     else:
         profile = agent.get_default_profile()
-        profile_id = profile["id"] if profile else None
 
-    if not profile_id:
+    if not profile:
         print("Error: could not determine profile", file=sys.stderr)
         agent.close()
         return
 
+    profile_id = profile["id"]
+    profile_label = args.profile or "Default"
     assignments = agent.get_profile_assignments(profile_id, did, ["UI_PAGE_BUTTONS"])
-    print(f"  Button Assignments (Profile: {args.profile or 'Default'})")
+    print(f"  Button Assignments (Profile: {profile_label})")
     print()
 
     for a in assignments:
