@@ -59,6 +59,16 @@ def cmd_status(args):
     if p:
         print(f"    Scroll:     speed={p.get('speed','?')} dir={p.get('dir','?')} smooth={p.get('isSmooth','?')}")
 
+    # Thumb wheel (from profile assignment)
+    profile = agent.get_default_profile()
+    if profile:
+        for a in agent.get_profile_assignments(profile["id"], did):
+            card = a.get("card", {})
+            ts = card.get("mouseThumbWheelSettings")
+            if ts:
+                print(f"    Thumb:      speed={ts.get('speed','?')} dir={ts.get('dir','?')} smooth={ts.get('isSmooth','?')}")
+                break
+
     info = agent.get_ok(f"/mouse/{did}/info")
     if info:
         rng = info.get("dpiInfo", {}).get("range", {})
@@ -110,6 +120,31 @@ def _set_scroll_via_profile(agent, mouse, param, value):
 
     ok = _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings",
                           "mouseScrollWheelSettings", modify)
+    if ok:
+        print(f"OK: {param} = {value}")
+    return ok
+
+
+def _set_thumb_via_profile(agent, mouse, param, value):
+    """Set thumb wheel settings through profile assignment."""
+    def modify(settings):
+        if param == "thumb-speed":
+            settings["speed"] = float(value)
+        elif param == "thumb-direction":
+            dirs = {"natural": "NATURAL", "standard": "STANDARD", "normal": "STANDARD"}
+            if value.lower() not in dirs:
+                print("Error: value must be natural or standard", file=sys.stderr); sys.exit(1)
+            settings["dir"] = dirs[value.lower()]
+        elif param == "thumb-smooth":
+            if value.lower() in ("on", "true", "1"):
+                settings["isSmooth"] = True
+            elif value.lower() in ("off", "false", "0"):
+                settings["isSmooth"] = False
+            else:
+                print("Error: value must be on or off", file=sys.stderr); sys.exit(1)
+
+    ok = _set_via_profile(agent, mouse, "mouse_thumb_wheel_settings",
+                          "mouseThumbWheelSettings", modify)
     if ok:
         print(f"OK: {param} = {value}")
     return ok
@@ -177,9 +212,15 @@ def cmd_set(args):
         if not ok:
             print("Error: could not update scroll settings", file=sys.stderr); sys.exit(1)
 
+    elif param in ("thumb-speed", "thumb-direction", "thumb-smooth"):
+        ok = _set_thumb_via_profile(agent, mouse, param, value)
+        if not ok:
+            print("Error: could not update thumb wheel settings", file=sys.stderr); sys.exit(1)
+
     else:
         print(f"Unknown parameter: {param}", file=sys.stderr)
-        print("Available: dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction", file=sys.stderr)
+        print("Available: dpi, speed, smartshift, smartshift-sensitivity,", file=sys.stderr)
+        print("  scroll-speed, scroll-direction, thumb-speed, thumb-direction, thumb-smooth", file=sys.stderr)
         sys.exit(1)
 
     agent.close()
