@@ -348,11 +348,19 @@ def cmd_status(args):
             charging = " (charging)" if p.get("charging") else ""
             print(f"    Battery:    {p.get('percentage', '?')}% [{p.get('level', '?')}]{charging}")
 
-        # Pointer speed
+        # Pointer speed + estimated DPI
         r = agent.call("GET", f"/mouse/{did}/pointer_speed")
         if r and r.get("result", {}).get("code") == "SUCCESS":
             ps = r["payload"].get("active", {})
-            print(f"    Pointer:    speed={ps.get('value', '?')} dpi_level={ps.get('dpiLevel', '?')}")
+            speed = ps.get("value", 0)
+            dpi_info = agent.call("GET", f"/mouse/{did}/info")
+            dpi_est = ""
+            if dpi_info and dpi_info.get("result", {}).get("code") == "SUCCESS":
+                rng = dpi_info["payload"].get("dpiInfo", {}).get("range", {})
+                dpi_min, dpi_max = rng.get("min", 200), rng.get("max", 8000)
+                dpi_val = int(dpi_min + speed * (dpi_max - dpi_min))
+                dpi_est = f" (~{dpi_val} DPI)"
+            print(f"    Pointer:    speed={speed}{dpi_est}")
 
         # SmartShift
         r = agent.call("GET", f"/smartshift/{did}/params")
@@ -389,7 +397,41 @@ def cmd_set(args):
     param = args.param
     value = args.value
 
-    if param == "speed":
+    r = None
+
+    if param == "dpi":
+        # Get DPI range from device
+        info = agent.call("GET", f"/mouse/{did}/info")
+        if not info or info.get("result", {}).get("code") != "SUCCESS":
+            print("Error: could not read DPI info", file=sys.stderr)
+            agent.close()
+            sys.exit(1)
+        dpi_range = info["payload"].get("dpiInfo", {}).get("range", {})
+        dpi_min = dpi_range.get("min", 200)
+        dpi_max = dpi_range.get("max", 8000)
+        dpi_step = dpi_range.get("steps", 50)
+
+        val = int(value)
+        val = round(val / dpi_step) * dpi_step  # snap to step
+        if not (dpi_min <= val <= dpi_max):
+            print(f"Error: DPI must be between {dpi_min} and {dpi_max} (step {dpi_step})", file=sys.stderr)
+            sys.exit(1)
+
+        # Convert DPI to pointer speed (0.0-1.0 linear mapping)
+        speed = (val - dpi_min) / (dpi_max - dpi_min)
+        cur = agent.call("GET", f"/mouse/{did}/pointer_speed")
+        dpi_level = 1
+        if cur and cur.get("result", {}).get("code") == "SUCCESS":
+            dpi_level = cur["payload"].get("active", {}).get("dpiLevel", 1)
+        r = agent.call("SET", f"/mouse/{did}/pointer_speed", {
+            "active": {"value": speed, "highResolutionSensorActive": False, "dpiLevel": dpi_level}
+        })
+        if r and r.get("result", {}).get("code") == "SUCCESS":
+            print(f"OK: DPI ~ {val} (speed={speed:.3f})")
+            agent.close()
+            return
+
+    elif param == "speed":
         val = float(value)
         if not (0.0 <= val <= 1.0):
             print("Error: speed must be between 0.0 and 1.0", file=sys.stderr)
@@ -474,7 +516,7 @@ def cmd_set(args):
 
     else:
         print(f"Unknown parameter: {param}", file=sys.stderr)
-        print("Available: speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction", file=sys.stderr)
+        print("Available: dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction", file=sys.stderr)
         agent.close()
         sys.exit(1)
 
@@ -900,7 +942,7 @@ def main():
     sub.add_parser("info", help="Show agent and system info")
 
     set_parser = sub.add_parser("set", help="Set a device parameter")
-    set_parser.add_argument("param", help="Parameter: speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction")
+    set_parser.add_argument("param", help="Parameter: dpi, speed, smartshift, smartshift-sensitivity, scroll-speed, scroll-direction")
     set_parser.add_argument("value", help="New value")
 
     button_parser = sub.add_parser("button", help="Set a button action")
