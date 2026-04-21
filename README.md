@@ -91,10 +91,33 @@ logi export config.json              # Export all settings
 logi import config.json              # Restore settings
 ```
 
+### Thumb wheel
+
+```bash
+logi set thumb-direction natural     # Thumb wheel direction
+logi set thumb-smooth off            # Thumb wheel smooth scrolling
+```
+
+### Declarative config
+
+```bash
+logi apply config.toml               # Apply all settings from TOML file
+logi daemon config.toml              # Auto-apply on device connect
+```
+
+See [example.toml](example.toml) for the config format.
+
 ### Real-time monitoring
 
 ```bash
 logi watch                           # Watch device events (Ctrl+C to stop)
+```
+
+### Multi-device
+
+```bash
+logi -d mx status                    # Select device by name
+logi -d dev00000000 set dpi 1600     # Select device by ID
 ```
 
 ### System info
