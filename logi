@@ -20,11 +20,30 @@ import time
 class LogiAgent:
     """Client for the logioptionsplus_agent Unix socket protocol."""
 
+    SUBSCRIBE_PATHS = [
+        "/devices/state/changed",
+        "/battery/state/changed",
+        "/devices/options/device_arrival",
+        "/devices/options/device_removal",
+    ]
+
     def __init__(self):
+        self.sock = None
+        self.msg_id = 0
+        self._connect()
+
+    def _connect(self):
+        """Connect to agent socket and perform handshake."""
         socks = glob.glob("/tmp/logitech_kiros_agent-*")
         if not socks:
             print("Error: logioptionsplus_agent is not running.", file=sys.stderr)
             sys.exit(1)
+
+        if self.sock:
+            try:
+                self.sock.close()
+            except OSError:
+                pass
 
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         self.sock.connect(socks[0])
@@ -35,15 +54,8 @@ class LogiAgent:
         total = struct.unpack("<I", header)[0]
         self._recv_exact(total)
 
-        self.msg_id = 0
-
         # Subscribe to required channels for device access
-        for p in [
-            "/devices/state/changed",
-            "/battery/state/changed",
-            "/devices/options/device_arrival",
-            "/devices/options/device_removal",
-        ]:
+        for p in self.SUBSCRIBE_PATHS:
             self._send("SUBSCRIBE", p)
         time.sleep(0.3)
         # Drain subscribe acks
@@ -72,10 +84,10 @@ class LogiAgent:
         packet = struct.pack(">I", 4) + b"json" + struct.pack(">I", len(data)) + data
         self.sock.send(struct.pack("<I", len(packet)) + packet)
 
-    def call(self, verb, path, payload=None):
-        self._send(verb, path, payload)
-        self.sock.settimeout(5)
+    def call(self, verb, path, payload=None, _retried=False):
         try:
+            self._send(verb, path, payload)
+            self.sock.settimeout(5)
             header = self._recv_exact(4)
             total = struct.unpack("<I", header)[0]
             rdata = self._recv_exact(total)
@@ -88,6 +100,11 @@ class LogiAgent:
                 if frame != b"json":
                     return json.loads(frame)
         except socket.timeout:
+            return None
+        except (ConnectionError, BrokenPipeError, OSError):
+            if not _retried:
+                self._connect()
+                return self.call(verb, path, payload, _retried=True)
             return None
 
     def recv_message(self, timeout=None):
