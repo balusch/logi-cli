@@ -117,22 +117,27 @@ class LogiAgent:
         packet = struct.pack(">I", 4) + b"json" + struct.pack(">I", len(data)) + data
         self.sock.send(struct.pack("<I", len(packet)) + packet)
 
+    def _recv_json(self):
+        """Read one LE-prefixed message and return the first non-'json' frame as dict."""
+        header = self._recv_exact(4)
+        total = struct.unpack("<I", header)[0]
+        rdata = self._recv_exact(total)
+        fpos = 0
+        while fpos + 4 <= len(rdata):
+            flen = struct.unpack(">I", rdata[fpos : fpos + 4])[0]
+            fpos += 4
+            frame = rdata[fpos : fpos + flen]
+            fpos += flen
+            if frame != b"json":
+                return json.loads(frame)
+        return None
+
     def call(self, verb, path, payload=None, _retried=False):
         """Send a request and return the JSON response, or None on timeout."""
         try:
             self._send(verb, path, payload)
             self.sock.settimeout(5)
-            header = self._recv_exact(4)
-            total = struct.unpack("<I", header)[0]
-            rdata = self._recv_exact(total)
-            fpos = 0
-            while fpos + 4 <= len(rdata):
-                flen = struct.unpack(">I", rdata[fpos : fpos + 4])[0]
-                fpos += 4
-                frame = rdata[fpos : fpos + flen]
-                fpos += flen
-                if frame != b"json":
-                    return json.loads(frame)
+            return self._recv_json()
         except socket.timeout:
             return None
         except (ConnectionError, BrokenPipeError, OSError):
@@ -146,22 +151,18 @@ class LogiAgent:
         if timeout is not None:
             self.sock.settimeout(timeout)
         try:
-            header = self._recv_exact(4)
-            total = struct.unpack("<I", header)[0]
-            rdata = self._recv_exact(total)
-            fpos = 0
-            while fpos + 4 <= len(rdata):
-                flen = struct.unpack(">I", rdata[fpos : fpos + 4])[0]
-                fpos += 4
-                frame = rdata[fpos : fpos + flen]
-                fpos += flen
-                if frame != b"json":
-                    return json.loads(frame)
+            return self._recv_json()
         except socket.timeout:
             return None
 
     def close(self):
         self.sock.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
 
     # --- High-level helpers ---
 

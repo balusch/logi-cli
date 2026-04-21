@@ -52,13 +52,14 @@ def cmd_status(args):
         charging = f" {green('(charging)')}" if p.get("charging") else ""
         print(f"    Battery:    {battery_color(pct, level)} [{level}]{charging}")
 
+    mouse_info = agent.get_ok(f"/mouse/{did}/info")
+
     p = agent.get_ok(f"/mouse/{did}/pointer_speed")
     if p:
         speed = p.get("active", {}).get("value", 0)
-        info = agent.get_ok(f"/mouse/{did}/info")
         dpi_est = ""
-        if info:
-            rng = info.get("dpiInfo", {}).get("range", {})
+        if mouse_info:
+            rng = mouse_info.get("dpiInfo", {}).get("range", {})
             dpi_min, dpi_max = rng.get("min", 200), rng.get("max", 8000)
             dpi_est = f" (~{int(dpi_min + speed * (dpi_max - dpi_min))} DPI)"
         print(f"    Pointer:    speed={speed}{dpi_est}")
@@ -81,9 +82,8 @@ def cmd_status(args):
                 print(f"    Thumb:      speed={ts.get('speed','?')} dir={ts.get('dir','?')} smooth={ts.get('isSmooth','?')}")
                 break
 
-    info = agent.get_ok(f"/mouse/{did}/info")
-    if info:
-        rng = info.get("dpiInfo", {}).get("range", {})
+    if mouse_info:
+        rng = mouse_info.get("dpiInfo", {}).get("range", {})
         if rng:
             print(f"    DPI Range:  {rng.get('min',0)}-{rng.get('max',0)} (step {rng.get('steps',0)})")
 
@@ -240,7 +240,8 @@ def cmd_set(args):
 
 def cmd_button(args):
     button = args.button.lower()
-    action = args.action.lower()
+    action_raw = args.action  # preserve case for keystroke parsing
+    action = action_raw.lower()
 
     slot_suffix = BUTTON_SLOTS.get(button)
     if not slot_suffix:
@@ -254,10 +255,10 @@ def cmd_button(args):
     if not card_id:
         if action.startswith("card_"):
             card_id = action
-        elif "+" in args.action:
-            custom_card = parse_keystroke(args.action)
+        elif "+" in action_raw:
+            custom_card = parse_keystroke(action_raw)
             if not custom_card:
-                print(f"Invalid keystroke: {args.action}", file=sys.stderr)
+                print(f"Invalid keystroke: {action_raw}", file=sys.stderr)
                 print("Format: Cmd+Z, Ctrl+Shift+A, etc.", file=sys.stderr)
                 sys.exit(1)
             card_id = custom_card["id"]
@@ -532,36 +533,32 @@ def cmd_buttons(args):
 
 
 def cmd_profiles(args):
-    agent = LogiAgent()
-    for p in agent.get_profiles():
-        app_id = p.get("applicationId", "")
-        is_default = "application_id" not in app_id
-        label = "Default" if is_default else app_id
-        marker = " *" if p.get("activeForApplication") else ""
-        n = len(p.get("assignments", []))
-        print(f"  {label}{marker}: {p.get('id', '?')} ({n} assignments)")
-    agent.close()
+    with LogiAgent() as agent:
+        for p in agent.get_profiles():
+            app_id = p.get("applicationId", "")
+            is_default = "application_id" not in app_id
+            label = "Default" if is_default else app_id
+            marker = " *" if p.get("activeForApplication") else ""
+            n = len(p.get("assignments", []))
+            print(f"  {label}{marker}: {p.get('id', '?')} ({n} assignments)")
 
 
 def cmd_info(args):
-    agent = LogiAgent()
+    with LogiAgent() as agent:
+        p = agent.get_ok("/system/info")
+        if p:
+            print(f"  Apple Silicon: {p.get('isCpuAppleSilicon', '?')}")
 
-    p = agent.get_ok("/system/info")
-    if p:
-        print(f"  Apple Silicon: {p.get('isCpuAppleSilicon', '?')}")
+        p = agent.get_ok("/scarif/info")
+        if p:
+            print(f"  App Version:  {p.get('appVersion', '?')}")
+            print(f"  OS:           {p.get('osName', '?')} {p.get('osVersion', '?')}")
+            print(f"  Mac Model:    {p.get('model', '?')}")
 
-    p = agent.get_ok("/scarif/info")
-    if p:
-        print(f"  App Version:  {p.get('appVersion', '?')}")
-        print(f"  OS:           {p.get('osName', '?')} {p.get('osVersion', '?')}")
-        print(f"  Mac Model:    {p.get('model', '?')}")
-
-    p = agent.get_ok("/configuration")
-    if p:
-        print(f"  Language:     {p.get('language', {}).get('value', '?')}")
-        print(f"  Theme:        {p.get('theme', {}).get('value', '?')}")
-
-    agent.close()
+        p = agent.get_ok("/configuration")
+        if p:
+            print(f"  Language:     {p.get('language', {}).get('value', '?')}")
+            print(f"  Theme:        {p.get('theme', {}).get('value', '?')}")
 
 
 def cmd_watch(args):
@@ -939,11 +936,10 @@ def _apply_config(agent, mouse, config):
 
 
 def cmd_raw(args):
-    agent = LogiAgent()
-    payload = json.loads(args.payload) if args.payload else None
-    r = agent.call(args.verb.upper(), args.path, payload)
-    print(json.dumps(r, indent=2) if r else "No response (timeout)")
-    agent.close()
+    with LogiAgent() as agent:
+        payload = json.loads(args.payload) if args.payload else None
+        r = agent.call(args.verb.upper(), args.path, payload)
+        print(json.dumps(r, indent=2) if r else "No response (timeout)")
 
 
 # ---------------------------------------------------------------------------
