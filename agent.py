@@ -197,8 +197,32 @@ class LogiAgent:
                 return dev
         return None
 
-    def require_mouse(self):
-        """Find mouse or exit with error."""
+    def find_device(self, name_or_id):
+        """Find a device by name, ID, or model substring."""
+        name_lower = name_or_id.lower()
+        for dev in self.get_devices():
+            did = dev.get("id", "")
+            display = dev.get("displayName", "")
+            model = dev.get("deviceModel", "")
+            if did == name_or_id or name_lower in display.lower() or name_lower in model.lower():
+                return dev
+        return None
+
+    def require_mouse(self, device_hint=None):
+        """Find mouse or exit with error. Optional device_hint to select specific device."""
+        if device_hint:
+            mouse = self.find_device(device_hint)
+            if not mouse:
+                print(f"Error: Device '{device_hint}' not found.", file=sys.stderr)
+                devices = self.get_devices()
+                real = [d for d in devices if d.get("deviceType") != "VIRTUAL_DEVICE"]
+                if real:
+                    print("Available devices:", file=sys.stderr)
+                    for d in real:
+                        print(f"  {d['id']}  {d.get('displayName','?')}", file=sys.stderr)
+                self.close()
+                sys.exit(1)
+            return mouse
         mouse = self.find_mouse()
         if not mouse:
             print("Error: No mouse connected.", file=sys.stderr)

@@ -35,7 +35,7 @@ from mappings import (
 
 def cmd_status(args):
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     did = mouse["id"]
 
     print(f"  {mouse.get('displayName', '?')} ({mouse.get('extendedDisplayName', '')})")
@@ -160,7 +160,7 @@ def _set_thumb_via_profile(agent, mouse, param, value):
 
 def cmd_set(args):
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     did = mouse["id"]
     param, value = args.param, args.value
 
@@ -262,7 +262,7 @@ def cmd_button(args):
             sys.exit(1)
 
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     profile = agent.require_profile(args.profile)
     slot_id = f"{mouse.get('slotPrefix')}_{slot_suffix}"
 
@@ -311,7 +311,7 @@ def _print_action_help(attempted):
 
 def cmd_buttons(args):
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     did = mouse["id"]
     slot_prefix = mouse.get("slotPrefix", "")
     profile = agent.require_profile(args.profile)
@@ -399,7 +399,7 @@ def cmd_watch(args):
 
 def cmd_export(args):
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     did = mouse["id"]
 
     config = {"device": {
@@ -445,7 +445,7 @@ def cmd_import(args):
         config = json.load(f)
 
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     did = mouse["id"]
     applied = []
 
@@ -492,7 +492,7 @@ def cmd_apply(args):
         config = tomllib.load(f)
 
     agent = LogiAgent()
-    mouse = agent.require_mouse()
+    mouse = agent.require_mouse(args.device)
     _apply_config(agent, mouse, config)
     agent.close()
 
@@ -645,6 +645,7 @@ def cmd_raw(args):
 
 def main():
     parser = argparse.ArgumentParser(prog="logi", description="CLI for Logitech Options+ device management")
+    parser.add_argument("--device", "-d", help="Device name or ID (for multi-device setups)")
     sub = parser.add_subparsers(dest="command")
 
     sub.add_parser("status", help="Show live device status")
