@@ -577,25 +577,62 @@ def cmd_watch(args):
         msg = agent.recv_message(timeout=1)
         if not msg:
             continue
-        ts = datetime.datetime.now().strftime("%H:%M:%S")
-        path = msg.get("path", "?")
+        ts = dim(datetime.datetime.now().strftime("%H:%M:%S"))
+        path = msg.get("path", "")
         payload = msg.get("payload", {})
 
         if "battery" in path:
-            pct = payload.get('percentage', '?')
-            level = payload.get('level', '')
-            print(f"  {dim(ts)} {battery_color(pct, level)} [{level}]")
+            pct = payload.get("percentage", "?")
+            level = payload.get("level", "")
+            dev_id = payload.get("deviceId", "")
+            charging = f" {green('charging')}" if payload.get("charging") else ""
+            print(f"  {ts} Battery {battery_color(pct, level)} [{level}]{charging}")
+
         elif "device_arrival" in path or "device_removal" in path:
             is_arrival = "arrival" in path
             event = green("connected") if is_arrival else red("disconnected")
-            for d in payload.get("deviceInfos", [{}]):
-                print(f"  {dim(ts)} {bold(d.get('displayName', '?'))} {event}")
+            infos = payload.get("deviceInfos", [])
+            if infos:
+                for d in infos:
+                    print(f"  {ts} {bold(d.get('displayName', '?'))} {event}")
+            else:
+                print(f"  {ts} Device {event}")
+
         elif "state/changed" in path:
-            for d in payload.get("deviceInfos", []):
-                print(f"  {dim(ts)} {d.get('displayName','?')}: {state_color(d.get('state','?'))}")
+            infos = payload.get("deviceInfos", [])
+            if infos:
+                for d in infos:
+                    name = d.get("displayName", "?")
+                    state = d.get("state", "?")
+                    print(f"  {ts} {bold(name)} state -> {state_color(state)}")
+            else:
+                print(f"  {ts} Device state changed")
+
+        elif "easy_switch" in path:
+            hosts = payload.get("hosts", [])
+            if hosts:
+                for h in hosts:
+                    if h.get("connected"):
+                        print(f"  {ts} Easy Switch -> Ch{h.get('index','?')} {bold(h.get('name','?'))}")
+            else:
+                print(f"  {ts} Easy Switch changed")
+
+        elif "fn_inversion" in path:
+            print(f"  {ts} Fn key inversion changed")
+
+        elif "swap" in path:
+            state = payload.get("state", "")
+            if state:
+                label = "Left-handed" if state == "RIGHT" else "Default"
+                print(f"  {ts} Mouse buttons -> {label}")
+            else:
+                print(f"  {ts} Mouse button swap changed")
+
         else:
+            # Fallback: make it readable
             ptype = payload.get("@type", "").split(".")[-1]
-            print(f"  {dim(ts)} {dim(msg.get('verb','?'))} {path} {dim(ptype)}")
+            event_name = path.rsplit("/", 1)[-1].replace("_", " ")
+            print(f"  {ts} {event_name} {dim(ptype)}")
 
     print("\nStopped.")
     agent.close()
