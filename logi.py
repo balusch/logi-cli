@@ -9,6 +9,7 @@ No GUI needed.
 import argparse
 import datetime
 import json
+import os
 import shutil
 import signal
 import subprocess
@@ -482,13 +483,108 @@ def cmd_import(args):
     agent.close()
 
 
+DEFAULT_CONFIG_PATH = os.path.expanduser("~/.config/logi-cli/config.toml")
+
+
+def cmd_init(args):
+    """Generate a TOML config from current device state."""
+    agent = LogiAgent()
+    mouse = agent.require_mouse(args.device)
+    did = mouse["id"]
+
+    lines = ["# logi-cli configuration", f"# Generated from: {mouse.get('displayName', '?')}", ""]
+
+    # [pointer]
+    p = agent.get_ok(f"/mouse/{did}/pointer_speed")
+    info = agent.get_ok(f"/mouse/{did}/info")
+    if p and info:
+        speed = p.get("active", {}).get("value", 0)
+        rng = info.get("dpiInfo", {}).get("range", {})
+        dpi_min, dpi_max = rng.get("min", 200), rng.get("max", 8000)
+        dpi = int(dpi_min + speed * (dpi_max - dpi_min))
+        lines += ["[pointer]", f"dpi = {dpi}", ""]
+
+    # [smartshift]
+    p = agent.get_ok(f"/smartshift/{did}/params")
+    if p:
+        mode = p.get("mode", "RATCHET").lower()
+        if not p.get("isEnabled", True):
+            mode = "off"
+        lines += ["[smartshift]", f'mode = "{mode}"', f"sensitivity = {p.get('sensitivity', 82)}", ""]
+
+    # [scroll] and [thumb] from profile assignments
+    profile = agent.get_default_profile()
+    scroll_done = thumb_done = False
+    if profile:
+        for a in agent.get_profile_assignments(profile["id"], did):
+            card = a.get("card", {})
+            ss = card.get("mouseScrollWheelSettings")
+            if ss and not scroll_done:
+                lines += ["[scroll]", f"speed = {ss.get('speed', 0)}", f'direction = "{ss.get("dir", "standard").lower()}"', ""]
+                scroll_done = True
+            ts = card.get("mouseThumbWheelSettings")
+            if ts and not thumb_done:
+                lines += ["[thumb]", f'direction = "{ts.get("dir", "standard").lower()}"',
+                           f"smooth = {'true' if ts.get('isSmooth') else 'false'}", ""]
+                thumb_done = True
+
+    # [buttons]
+    if profile:
+        slot_prefix = mouse.get("slotPrefix", "")
+        assignments = agent.get_profile_assignments(profile["id"], did, ["UI_PAGE_BUTTONS"])
+        btn_lines = []
+        for a in assignments:
+            sid = a.get("slotId", "")
+            if slot_prefix not in sid:
+                continue
+            suffix = sid.replace(f"{slot_prefix}_", "")
+            # Find friendly button name
+            btn_name = None
+            for name, slot in BUTTON_SLOTS.items():
+                if slot == suffix:
+                    btn_name = name
+                    break
+            if not btn_name:
+                continue
+            # Find action alias
+            card_id = a.get("card", {}).get("id", "")
+            action_name = None
+            for alias, cid in ACTION_ALIASES.items():
+                if cid == card_id:
+                    action_name = alias
+                    break
+            if not action_name:
+                action_name = card_id
+            btn_lines.append(f'{btn_name} = "{action_name}"')
+
+        if btn_lines:
+            lines += ["[buttons]"] + btn_lines + [""]
+
+    output = "\n".join(lines)
+
+    out_path = args.file or DEFAULT_CONFIG_PATH
+    os.makedirs(os.path.dirname(out_path), exist_ok=True)
+    with open(out_path, "w") as f:
+        f.write(output)
+    print(f"Generated {out_path}")
+
+    agent.close()
+
+
 def cmd_apply(args):
     """Apply settings from a TOML config file."""
     if tomllib is None:
         print("Error: TOML support requires Python 3.11+ or 'pip install tomli'", file=sys.stderr)
         sys.exit(1)
 
-    with open(args.file, "rb") as f:
+    config_file = args.file or DEFAULT_CONFIG_PATH
+    if not os.path.exists(config_file):
+        print(f"Error: {config_file} not found", file=sys.stderr)
+        if not args.file:
+            print("Run 'logi init' to generate a config from current device state.", file=sys.stderr)
+        sys.exit(1)
+
+    with open(config_file, "rb") as f:
         config = tomllib.load(f)
 
     agent = LogiAgent()
@@ -503,7 +599,12 @@ def cmd_daemon(args):
         print("Error: TOML support requires Python 3.11+ or 'pip install tomli'", file=sys.stderr)
         sys.exit(1)
 
-    config_file = args.config
+    config_file = args.config or DEFAULT_CONFIG_PATH
+    if not os.path.exists(config_file):
+        print(f"Error: {config_file} not found", file=sys.stderr)
+        if not args.config:
+            print("Run 'logi init' to generate a config.", file=sys.stderr)
+        sys.exit(1)
     with open(config_file, "rb") as f:
         config = tomllib.load(f)
 
@@ -672,11 +773,14 @@ def main():
     p = sub.add_parser("import", help="Import config from JSON")
     p.add_argument("file", help="JSON config file")
 
+    p = sub.add_parser("init", help="Generate TOML config from current device state")
+    p.add_argument("file", nargs="?", help=f"Output file (default: {DEFAULT_CONFIG_PATH})")
+
     p = sub.add_parser("apply", help="Apply settings from TOML config file")
-    p.add_argument("file", help="TOML config file (see example.toml)")
+    p.add_argument("file", nargs="?", help=f"TOML config file (default: {DEFAULT_CONFIG_PATH})")
 
     p = sub.add_parser("daemon", help="Watch for device connections and auto-apply config")
-    p.add_argument("config", help="TOML config file to apply on connect")
+    p.add_argument("config", nargs="?", help=f"TOML config file (default: {DEFAULT_CONFIG_PATH})")
 
     p = sub.add_parser("raw", help="Send raw request to agent")
     p.add_argument("verb", help="GET, SET, SUBSCRIBE")
@@ -689,7 +793,7 @@ def main():
         "status": cmd_status, "watch": cmd_watch, "info": cmd_info,
         "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
         "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
-        "apply": cmd_apply, "daemon": cmd_daemon, "raw": cmd_raw,
+        "init": cmd_init, "apply": cmd_apply, "daemon": cmd_daemon, "raw": cmd_raw,
     }
 
     if args.command in commands:
