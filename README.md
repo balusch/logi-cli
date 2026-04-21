@@ -134,6 +134,10 @@ logi raw GET /battery/dev00000000/state
 logi raw SET /mouse/dev00000000/pointer_speed --payload '{"active":{"value":0.5}}'
 ```
 
+## Acknowledgements
+
+- [logiops](https://github.com/PixlOne/logiops) — Unofficial Logitech HID++ driver for Linux. Inspired the idea of a CLI-first approach to Logitech device management. logiops communicates directly via HID++ protocol; logi-cli takes a different approach by talking to the Options+ agent via its IPC socket.
+
 ## Protocol
 
 See [PROTOCOL.md](PROTOCOL.md) for the reverse-engineered IPC protocol documentation.
