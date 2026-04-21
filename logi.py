@@ -373,6 +373,123 @@ def cmd_switch(args):
     agent.close()
 
 
+def cmd_flow(args):
+    """Show Logitech Flow status."""
+    agent = LogiAgent()
+    mouse = agent.require_mouse(args.device)
+    did = mouse["id"]
+
+    p = agent.get_ok(f"/flow/{did}/device_peer_status")
+    if not p:
+        print("Error: could not read Flow status", file=sys.stderr)
+        agent.close()
+        return
+
+    print(f"  {bold('Logitech Flow')}")
+    peers = p.get("peers", [])
+    if not peers:
+        print(f"    {dim('No peers configured')}")
+    for peer in peers:
+        ch = peer.get("channel", "?")
+        pid = peer.get("id", "")
+        connected = peer.get("connected", False)
+        enabled = peer.get("enabled", False)
+
+        if connected:
+            status = green("connected")
+        elif enabled and pid:
+            status = yellow("enabled")
+        elif enabled:
+            status = dim("enabled (no peer)")
+        else:
+            status = dim("disabled")
+
+        label = pid or "(empty)"
+        print(f"    Ch{ch}: {label} [{status}]")
+
+    loc = agent.get_ok(f"/flow/{did}/device_location")
+    if loc:
+        self_ch = loc.get("selfChannel", "?")
+        dev_ch = loc.get("deviceChannel", "?")
+        print(f"    Current: Ch{self_ch} (device on Ch{dev_ch})")
+
+    agent.close()
+
+
+def cmd_permissions(args):
+    """Check macOS permissions for the agent."""
+    agent = LogiAgent()
+
+    print(f"  {bold('macOS Permissions')}")
+    checks = [
+        ("bluetooth", "Bluetooth"),
+        ("accessibility", "Accessibility"),
+        ("input_monitoring", "Input Monitoring"),
+        ("screen_recording", "Screen Recording"),
+    ]
+    for path, name in checks:
+        p = agent.get_ok(f"/macos_security/{path}")
+        if p:
+            state = p.get("state", p.get("value", "?"))
+            if state == "GRANTED":
+                print(f"    {name:20s} {green(state)}")
+            elif state == "DENIED":
+                print(f"    {name:20s} {red(state)}")
+            else:
+                print(f"    {name:20s} {yellow(state)}")
+
+    agent.close()
+
+
+def cmd_reset(args):
+    """Reset device to default settings."""
+    agent = LogiAgent()
+    mouse = agent.require_mouse(args.device)
+    did = mouse["id"]
+
+    # Get defaults
+    defaults = agent.get_ok(f"/devices/{did}/defaults")
+    if not defaults:
+        print("Error: could not read defaults", file=sys.stderr)
+        agent.close()
+        sys.exit(1)
+
+    if not args.yes:
+        name = mouse.get("displayName", "device")
+        print(f"This will reset {bold(name)} to factory defaults.", file=sys.stderr)
+        try:
+            confirm = input("Continue? [y/N] ")
+        except (EOFError, KeyboardInterrupt):
+            print("\nCancelled.")
+            agent.close()
+            return
+        if confirm.lower() not in ("y", "yes"):
+            print("Cancelled.")
+            agent.close()
+            return
+
+    profile = agent.require_profile()
+    applied = 0
+    for a in defaults.get("assignments", []):
+        card = a.get("card", {})
+        if not card.get("id"):
+            continue
+        r = agent.call("SET", "/v2/assignment", {
+            "profileId": profile["id"],
+            "assignment": {
+                "cardId": card.get("id", ""),
+                "slotId": a.get("slotId", ""),
+                "tags": a.get("tags", ["UI_PAGE_BUTTONS"]),
+                "card": card,
+            },
+        })
+        if r and r.get("result", {}).get("code") == "SUCCESS":
+            applied += 1
+
+    print(f"Reset {applied} assignments to defaults.")
+    agent.close()
+
+
 def _print_action_help(attempted):
     """Print helpful action suggestions, using fzf if available."""
     all_actions = sorted(ACTION_ALIASES.keys())
@@ -861,6 +978,11 @@ def main():
     p.add_argument("--profile", help="App profile")
 
     sub.add_parser("switch", help="Show Easy Switch channels")
+    sub.add_parser("flow", help="Show Logitech Flow status")
+    sub.add_parser("permissions", help="Check macOS permissions")
+
+    p = sub.add_parser("reset", help="Reset device to factory defaults")
+    p.add_argument("-y", "--yes", action="store_true", help="Skip confirmation")
 
     p = sub.add_parser("export", help="Export config to JSON")
     p.add_argument("file", nargs="?", help="Output file (default: stdout)")
@@ -889,11 +1011,14 @@ def main():
         "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
         "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
         "gesture": cmd_gesture, "switch": cmd_switch,
+        "flow": cmd_flow, "permissions": cmd_permissions, "reset": cmd_reset,
         "init": cmd_init, "apply": cmd_apply, "daemon": cmd_daemon, "raw": cmd_raw,
     }
 
     if args.command in commands:
         commands[args.command](args)
+    elif args.command is None:
+        cmd_status(args)
     else:
         parser.print_help()
 

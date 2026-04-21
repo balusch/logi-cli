@@ -4,7 +4,7 @@ _logi() {
     cur="${COMP_WORDS[COMP_CWORD]}"
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
-    commands="status watch info set button buttons profiles export import raw"
+    commands="status watch info set button buttons gesture switch flow permissions profiles init apply daemon export import reset raw"
 
     case "${COMP_CWORD}" in
         1)
@@ -13,13 +13,16 @@ _logi() {
         2)
             case "$prev" in
                 set)
-                    COMPREPLY=($(compgen -W "dpi speed smartshift smartshift-sensitivity scroll-speed scroll-direction" -- "$cur"))
+                    COMPREPLY=($(compgen -W "dpi speed smartshift smartshift-sensitivity scroll-speed scroll-direction thumb-speed thumb-direction thumb-smooth" -- "$cur"))
                     ;;
                 button)
                     COMPREPLY=($(compgen -W "middle back forward gesture" -- "$cur"))
                     ;;
-                export|import)
-                    COMPREPLY=($(compgen -f -X '!*.json' -- "$cur"))
+                gesture)
+                    COMPREPLY=($(compgen -W "window media pan zoom app custom" -- "$cur"))
+                    ;;
+                export|import|apply|daemon|init)
+                    COMPREPLY=($(compgen -f -- "$cur"))
                     ;;
                 raw)
                     COMPREPLY=($(compgen -W "GET SET SUBSCRIBE" -- "$cur"))
