@@ -1,0 +1,26 @@
+# logi-cli configuration file
+# Apply with: logi apply example.toml
+
+[pointer]
+dpi = 1000
+# speed = 0.44  # alternative to dpi (0.0-1.0)
+
+[smartshift]
+mode = "ratchet"   # ratchet, freespin, off
+sensitivity = 82
+
+[scroll]
+speed = 0.62
+direction = "standard"  # standard, natural
+
+[thumb]
+direction = "standard"
+smooth = true
+
+[buttons]
+middle = "middle"
+back = "back"
+forward = "forward"
+gesture = "gesture"
+# Custom keystroke example:
+# back = "Cmd+Z"

@@ -14,6 +14,14 @@ import signal
 import subprocess
 import sys
 
+try:
+    import tomllib  # Python 3.11+
+except ImportError:
+    try:
+        import tomli as tomllib  # fallback
+    except ImportError:
+        tomllib = None
+
 from agent import LogiAgent
 from mappings import (
     ACTION_ALIASES, BUTTON_NAMES, BUTTON_SLOTS,
@@ -474,6 +482,121 @@ def cmd_import(args):
     agent.close()
 
 
+def cmd_apply(args):
+    """Apply settings from a TOML config file."""
+    if tomllib is None:
+        print("Error: TOML support requires Python 3.11+ or 'pip install tomli'", file=sys.stderr)
+        sys.exit(1)
+
+    with open(args.file, "rb") as f:
+        config = tomllib.load(f)
+
+    agent = LogiAgent()
+    mouse = agent.require_mouse()
+    did = mouse["id"]
+    applied = []
+
+    # [pointer]
+    ptr = config.get("pointer", {})
+    if "dpi" in ptr:
+        info = agent.get_ok(f"/mouse/{did}/info")
+        if info:
+            rng = info.get("dpiInfo", {}).get("range", {})
+            dpi_min, dpi_max, dpi_step = rng.get("min", 200), rng.get("max", 8000), rng.get("steps", 50)
+            val = round(int(ptr["dpi"]) / dpi_step) * dpi_step
+            speed = (val - dpi_min) / (dpi_max - dpi_min)
+            cur = agent.get_ok(f"/mouse/{did}/pointer_speed") or {}
+            dpi_level = cur.get("active", {}).get("dpiLevel", 1)
+            if agent.set_ok(f"/mouse/{did}/pointer_speed",
+                            {"active": {"value": speed, "highResolutionSensorActive": False, "dpiLevel": dpi_level}}):
+                applied.append(f"dpi={val}")
+    elif "speed" in ptr:
+        if agent.set_ok(f"/mouse/{did}/pointer_speed",
+                        {"active": {"value": float(ptr["speed"]), "highResolutionSensorActive": False, "dpiLevel": 1}}):
+            applied.append(f"speed={ptr['speed']}")
+
+    # [smartshift]
+    ss = config.get("smartshift", {})
+    if ss:
+        cur = agent.get_ok(f"/smartshift/{did}/params")
+        if cur:
+            cur.pop("@type", None)
+            modes = {"ratchet": ("RATCHET", True), "on": ("RATCHET", True),
+                     "freespin": ("FREESPIN", True), "free": ("FREESPIN", True),
+                     "off": ("RATCHET", False)}
+            if "mode" in ss and ss["mode"].lower() in modes:
+                mode, enabled = modes[ss["mode"].lower()]
+                cur["mode"], cur["isEnabled"] = mode, enabled
+            if "sensitivity" in ss:
+                cur["sensitivity"] = int(ss["sensitivity"])
+            if agent.set_ok(f"/smartshift/{did}/params", cur):
+                applied.append("smartshift")
+
+    # [scroll]
+    scroll = config.get("scroll", {})
+    if scroll:
+        def modify_scroll(settings):
+            if "speed" in scroll:
+                settings["speed"] = float(scroll["speed"])
+            if "direction" in scroll:
+                settings["dir"] = "NATURAL" if scroll["direction"].lower() == "natural" else "STANDARD"
+        if _set_via_profile(agent, mouse, "mouse_scroll_wheel_settings",
+                            "mouseScrollWheelSettings", modify_scroll):
+            applied.append("scroll")
+
+    # [thumb]
+    thumb = config.get("thumb", {})
+    if thumb:
+        def modify_thumb(settings):
+            if "speed" in thumb:
+                settings["speed"] = float(thumb["speed"])
+            if "direction" in thumb:
+                settings["dir"] = "NATURAL" if thumb["direction"].lower() == "natural" else "STANDARD"
+            if "smooth" in thumb:
+                settings["isSmooth"] = bool(thumb["smooth"])
+        if _set_via_profile(agent, mouse, "mouse_thumb_wheel_settings",
+                            "mouseThumbWheelSettings", modify_thumb):
+            applied.append("thumb")
+
+    # [buttons]
+    buttons = config.get("buttons", {})
+    if buttons:
+        profile = agent.require_profile()
+        slot_prefix = mouse.get("slotPrefix", "")
+        for btn_name, action_str in buttons.items():
+            slot_suffix = BUTTON_SLOTS.get(btn_name.lower())
+            if not slot_suffix:
+                continue
+            card_id = ACTION_ALIASES.get(action_str.lower())
+            custom_card = None
+            if not card_id and "+" in action_str:
+                custom_card = parse_keystroke(action_str)
+                if custom_card:
+                    card_id = custom_card["id"]
+            if not card_id:
+                continue
+            card = custom_card
+            if not card:
+                for a in profile.get("assignments", []):
+                    if a.get("card", {}).get("id") == card_id:
+                        card = a["card"]
+                        break
+            if not card:
+                card = {"id": card_id, "attribute": "MACRO_PLAYBACK", "readOnly": True}
+            if agent.set_ok("/v2/assignment", {
+                "profileId": profile["id"],
+                "assignment": {"cardId": card_id, "slotId": f"{slot_prefix}_{slot_suffix}",
+                               "tags": ["UI_PAGE_BUTTONS"], "card": card},
+            }):
+                applied.append(f"button:{btn_name}")
+
+    if applied:
+        print(f"Applied {len(applied)} settings: {', '.join(applied)}")
+    else:
+        print("No settings applied.")
+    agent.close()
+
+
 def cmd_raw(args):
     agent = LogiAgent()
     payload = json.loads(args.payload) if args.payload else None
@@ -514,6 +637,9 @@ def main():
     p = sub.add_parser("import", help="Import config from JSON")
     p.add_argument("file", help="JSON config file")
 
+    p = sub.add_parser("apply", help="Apply settings from TOML config file")
+    p.add_argument("file", help="TOML config file (see example.toml)")
+
     p = sub.add_parser("raw", help="Send raw request to agent")
     p.add_argument("verb", help="GET, SET, SUBSCRIBE")
     p.add_argument("path")
@@ -525,7 +651,7 @@ def main():
         "status": cmd_status, "watch": cmd_watch, "info": cmd_info,
         "set": cmd_set, "button": cmd_button, "buttons": cmd_buttons,
         "profiles": cmd_profiles, "export": cmd_export, "import": cmd_import,
-        "raw": cmd_raw,
+        "apply": cmd_apply, "raw": cmd_raw,
     }
 
     if args.command in commands:
